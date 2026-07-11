@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DUEL — Wild West Quick-Draw</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game-frame">
+  <canvas id="game" width="960" height="540"></canvas>
+
+  <!-- ============ TITLE SCREEN ============ -->
+  <div class="screen visible" id="screen-title">
+    <div class="title-art">
+      <div class="title-star">&#9733;</div>
+      <h1>DUEL</h1>
+      <div class="title-sub">A WILD WEST QUICK-DRAW SHOWDOWN</div>
+    </div>
+    <div class="menu-buttons">
+      <button class="btn btn-big" id="btn-play">PLAY</button>
+      <button class="btn" id="btn-settings">SETTINGS</button>
+      <button class="btn" id="btn-help">HOW TO PLAY</button>
+    </div>
+    <div class="highscore-plate" id="title-highscore">HIGH SCORE: 0</div>
+    <div class="title-footer">Hold your nerve. Hold your holster. Fire on <span class="fire-word">FIRE!</span></div>
+  </div>
+
+  <!-- ============ CHARACTER SELECT ============ -->
+  <div class="screen" id="screen-select">
+    <h2 class="screen-heading">CHOOSE YOUR GUNSLINGER</h2>
+    <div class="select-layout">
+      <div class="select-left">
+        <div class="roster-grid" id="roster-grid"></div>
+        <div class="cheat-row">
+          <input type="text" id="cheat-input" placeholder="CHEAT CODE" maxlength="16" autocomplete="off" spellcheck="false">
+          <button class="btn btn-small" id="btn-cheat">APPLY</button>
+        </div>
+        <div class="cheat-feedback" id="cheat-feedback"></div>
+      </div>
+      <div class="select-right">
+        <canvas id="preview-canvas" width="230" height="300"></canvas>
+        <input type="text" id="name-input" maxlength="14" placeholder="YOUR NAME" autocomplete="off" spellcheck="false">
+        <div class="color-grid" id="color-grid">
+          <label>HAT <input type="color" data-part="hat"></label>
+          <label>SHIRT <input type="color" data-part="shirt"></label>
+          <label>VEST <input type="color" data-part="vest"></label>
+          <label>PANTS <input type="color" data-part="pants"></label>
+          <label>BANDANA <input type="color" data-part="bandana"></label>
+          <label>SKIN <input type="color" data-part="skin"></label>
+          <label>GUN <input type="color" data-part="gun"></label>
+          <label>HAIR <input type="color" data-part="hair"></label>
+        </div>
+      </div>
+    </div>
+    <div class="screen-nav">
+      <button class="btn" id="btn-select-back">BACK</button>
+      <button class="btn btn-big" id="btn-start">START DUEL</button>
+    </div>
+  </div>
+
+  <!-- ============ SETTINGS ============ -->
+  <div class="screen" id="screen-settings">
+    <h2 class="screen-heading">SETTINGS</h2>
+    <div class="settings-layout">
+      <fieldset>
+        <legend>DIFFICULTY</legend>
+        <div class="preset-row" id="preset-row">
+          <button class="btn btn-preset" data-preset="easy">EASY</button>
+          <button class="btn btn-preset" data-preset="normal">NORMAL</button>
+          <button class="btn btn-preset" data-preset="hard">HARD</button>
+          <button class="btn btn-preset" data-preset="deadeye">DEADEYE</button>
+        </div>
+        <label class="slider-label">OPPONENT REACTION <span id="val-reaction"></span>
+          <input type="range" id="set-reaction" min="50" max="220" step="5">
+        </label>
+        <label class="slider-label">OPPONENT ACCURACY <span id="val-accuracy"></span>
+          <input type="range" id="set-accuracy" min="40" max="130" step="5">
+        </label>
+      </fieldset>
+      <fieldset>
+        <legend>GAME RULES</legend>
+        <label class="row-label">STARTING HEALTH
+          <select id="set-health">
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="150">150</option>
+            <option value="200">200</option>
+          </select>
+        </label>
+        <label class="row-label">SHOTS PER DUEL
+          <select id="set-ammo">
+            <option value="3">3</option>
+            <option value="6">6</option>
+            <option value="9">9</option>
+            <option value="12">12</option>
+            <option value="0">UNLIMITED</option>
+          </select>
+        </label>
+        <label class="row-label">OPPONENTS
+          <select id="set-opponents">
+            <option value="3">3</option>
+            <option value="6">6</option>
+            <option value="9">9</option>
+            <option value="12">12</option>
+          </select>
+        </label>
+        <label class="row-label">DAMAGE MODEL
+          <select id="set-damage">
+            <option value="zones">BODY ZONES</option>
+            <option value="uniform">UNIFORM</option>
+          </select>
+        </label>
+        <label class="row-label">ONE-SHOT HEADSHOTS
+          <select id="set-headshot">
+            <option value="on">ON</option>
+            <option value="off">OFF</option>
+          </select>
+        </label>
+        <label class="row-label">BONUS ROUNDS
+          <select id="set-bonus">
+            <option value="2">EVERY 2 DUELS</option>
+            <option value="3">EVERY 3 DUELS</option>
+            <option value="0">OFF</option>
+          </select>
+        </label>
+        <label class="row-label">SOUND
+          <select id="set-sound">
+            <option value="on">ON</option>
+            <option value="off">OFF</option>
+          </select>
+        </label>
+      </fieldset>
+    </div>
+    <div class="screen-nav">
+      <button class="btn" id="btn-settings-reset">RESET DEFAULTS</button>
+      <button class="btn btn-big" id="btn-settings-back">DONE</button>
+    </div>
+  </div>
+
+  <!-- ============ HOW TO PLAY ============ -->
+  <div class="screen" id="screen-help">
+    <h2 class="screen-heading">HOW TO PLAY</h2>
+    <div class="help-body">
+      <ol>
+        <li>Rest your cursor on the <b>HOLSTER</b> circle at the bottom-left and keep it there.</li>
+        <li>Wait through the countdown &mdash; <b>3&hellip; 2&hellip; 1&hellip;</b> Move off the holster early and the count resets!</li>
+        <li>On <span class="fire-word">FIRE!</span>, aim at your opponent and click to shoot. First to drop wins.</li>
+        <li>Headshots are lethal. Body, arm and leg hits wear them down. You each get limited shots &mdash; if both stand when the smoke clears, it's a draw and you duel again.</li>
+        <li>Between duels: <b>bonus rounds</b>. Shoot the bottles &mdash; and do NOT shoot the assistant.</li>
+        <li>Score comes from draw speed, accuracy and remaining health. Beat every gunslinger to win.</li>
+      </ol>
+      <p class="help-hint">Psst&hellip; there's a cheat-code box on the character select screen. Codes travel by word of mouth.</p>
+    </div>
+    <div class="screen-nav">
+      <button class="btn btn-big" id="btn-help-back">BACK</button>
+    </div>
+  </div>
+
+  <!-- ============ GAME OVER / VICTORY ============ -->
+  <div class="screen" id="screen-results">
+    <h2 class="screen-heading" id="results-heading">GAME OVER</h2>
+    <div class="results-body">
+      <div class="results-line" id="results-line"></div>
+      <div class="results-score" id="results-score"></div>
+      <div class="results-high" id="results-high"></div>
+    </div>
+    <div class="screen-nav">
+      <button class="btn" id="btn-results-title">TITLE</button>
+      <button class="btn btn-big" id="btn-results-retry">RETRY LEVEL</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/audio.js"></script>
+<script src="js/characters.js"></script>
+<script src="js/duel.js"></script>
+<script src="js/bonus.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
