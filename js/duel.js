@@ -1,6 +1,46 @@
 /* DUEL — side-view quick-draw duel, AI opponent, gore effects, scene rendering */
 window.GB = window.GB || {};
 
+// ---------- shared trajectory math (ray-cast aiming) ----------
+GB.geom = (function () {
+  function norm(dx, dy) {
+    const l = Math.hypot(dx, dy) || 1;
+    return { x: dx / l, y: dy / l };
+  }
+
+  /**
+   * March a ray from (mx,my) through (cx,cy) and beyond, stopping at the
+   * first point testFn() reports a hit for, the ground plane, or the edge
+   * of the screen. Aiming only depends on the muzzle->cursor line, not the
+   * cursor's exact position — the bullet keeps travelling past the cursor.
+   */
+  function castRay(mx, my, cx, cy, testFn, defaultDir, groundY) {
+    const GY = groundY || 478;
+    let dx = cx - mx, dy = cy - my;
+    const len = Math.hypot(dx, dy);
+    if (len < 2) { dx = (defaultDir && defaultDir.x) || 1; dy = (defaultDir && defaultDir.y) || 0; }
+    else { dx /= len; dy /= len; }
+    const STEP = 6, MAX = 1700;
+    let px = mx, py = my;
+    for (let t = STEP; t < MAX; t += STEP) {
+      const nx = mx + dx * t, ny = my + dy * t;
+      // only counts as a ground hit if the ray crosses the plane from above —
+      // a muzzle that already starts at/below it (e.g. a corner prop) can still fire
+      if (py < GY && ny >= GY) {
+        const frac = (GY - py) / ((ny - py) || 1);
+        return { hit: 'ground', x: px + (nx - px) * frac, y: GY };
+      }
+      if (nx < -60 || nx > 1020 || ny < -90 || ny > 640) return { hit: null, x: nx, y: ny };
+      const r = testFn(nx, ny);
+      if (r) return { hit: r, x: nx, y: ny };
+      px = nx; py = ny;
+    }
+    return { hit: null, x: mx + dx * MAX, y: my + dy * MAX };
+  }
+
+  return { norm, castRay };
+})();
+
 // ---------- shared particle / tracer / stain / floating-text effects ----------
 GB.fx = (function () {
   let parts = [];
@@ -55,6 +95,26 @@ GB.fx = (function () {
   function pool(x, y, maxR) {
     if (gore === 'off' || !stainCtx) return;
     pools.push({ x, y, r: 4, maxR: (maxR || 34) * (gore === 'buckets' ? 1.4 : 1), rate: 16 });
+  }
+
+  /** Chunks of flesh/cloth/bone stripped out on impact. dir = spray direction in radians. */
+  function gibs(x, y, n, dir, colors) {
+    if (gore === 'off') return;
+    const mult = gore === 'buckets' ? 1.8 : 1;
+    const count = Math.max(1, Math.round(n * mult));
+    for (let i = 0; i < count; i++) {
+      const a = (dir || 0) + (Math.random() - 0.5) * 2.0;
+      const sp = 90 + Math.random() * 260;
+      parts.push({
+        type: 'gib', x, y,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (100 + Math.random() * 140),
+        w: 3 + Math.random() * 5, h: 2.5 + Math.random() * 4,
+        rot: Math.random() * 6, vr: (Math.random() - 0.5) * 16,
+        life: 0.9 + Math.random() * 0.7,
+        floor: 460 + Math.random() * 50,
+        color: colors[(Math.random() * colors.length) | 0]
+      });
+    }
   }
 
   function spawnDust(x, y, n, big) {
@@ -114,6 +174,19 @@ GB.fx = (function () {
         }
         p.life = 0;
       }
+      // fallen chunks leave a stamped smear too
+      if (p.type === 'gib' && p.vy > 0 && p.y >= p.floor) {
+        if (stainCtx) {
+          stainCtx.save();
+          stainCtx.translate(p.x, p.y);
+          stainCtx.rotate(p.rot);
+          stainCtx.fillStyle = p.color;
+          stainCtx.globalAlpha = 0.8;
+          stainCtx.fillRect(-p.w, -p.h * 0.6, p.w * 2, p.h * 1.2);
+          stainCtx.restore();
+        }
+        p.life = 0;
+      }
     }
     parts = parts.filter(p => p.life > 0);
     for (const pl of pools) {
@@ -151,6 +224,14 @@ GB.fx = (function () {
         ctx.translate(p.x, p.y); ctx.rotate(p.rot);
         ctx.fillStyle = p.color;
         ctx.fillRect(-p.r, -p.r * 0.6, p.r * 2, p.r * 1.2);
+        ctx.restore();
+      } else if (p.type === 'gib') {
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        GB.chars.rr(ctx, -p.w, -p.h, p.w * 2, p.h * 2, Math.min(p.w, p.h) * 0.6);
+        ctx.fill();
         ctx.restore();
       } else if (p.type === 'tracer') {
         ctx.globalAlpha = Math.max(0, p.life / p.max) * 0.85;
@@ -197,8 +278,9 @@ GB.fx = (function () {
     if (stainCtx) stainCtx.clearRect(0, 0, stain.width, stain.height);
   }
 
-  return { setGore, initStains, blood, spawnBlood, drip, pool, spawnDust, spawnShards,
-           spawnHat, tracer, flash, spawnText, update, draw, drawStains, clear };
+  return { setGore, initStains, blood, spawnBlood, drip, pool, gibs, spawnDust, spawnShards,
+           spawnHat, tracer, flash, spawnText, update, draw, drawStains, clear,
+           debugCounts: () => ({ parts: parts.length, gibs: parts.filter(p => p.type === 'gib').length, pools: pools.length }) };
 })();
 
 // ---------- procedural scene backgrounds ----------
@@ -409,10 +491,9 @@ GB.Duel = (function () {
   let S = null;
 
   function restZone() {
-    // circle around the player's holstered revolver (arm hanging, raise = 0)
+    // circle right on the barrel tip of the hanging revolver (raise = 0)
     const m = GB.chars.sideMuzzlePoint(PL.x, PL.y, PL.scale, PL.facing, 0);
-    const sh = { x: PL.x + 2 * PL.scale, y: PL.y - 128 * PL.scale };
-    return { x: (m.x + sh.x) / 2 + 8, y: (m.y + sh.y) / 2 + 14, r: 50 };
+    return { x: m.x, y: m.y, r: 40 };
   }
 
   function start(opts) {
@@ -491,6 +572,142 @@ GB.Duel = (function () {
     return { x: geo.x + w.dx * geo.scale * geo.facing, y: geo.y + w.dy * geo.scale };
   }
 
+  const GIB_BONE = '#e8e2d2';
+  function gibColors(cfg) { return ['#8c1f16', '#a3231b', cfg.shirt, GIB_BONE]; }
+
+  // ================= basic ragdoll physics (Verlet) =================
+  // Local (unscaled, facing=+1) anatomy points matching drawSide's proportions.
+  const RAG_LOCAL = {
+    head:   { x: 4,    y: -160 },
+    neck:   { x: 2,    y: -140 },
+    pelvis: { x: 0,    y: -80  },
+    kneeB:  { x: -7.5, y: -45  },
+    footB:  { x: -7.5, y: -8   },
+    kneeF:  { x: 7.5,  y: -45  },
+    footF:  { x: 7.5,  y: -8   },
+    handF:  { x: -9,   y: -90  }
+  };
+  const RAG_LINKS = [
+    ['head', 'neck'], ['neck', 'pelvis'], ['neck', 'handF'], ['neck', 'handG'],
+    ['pelvis', 'kneeB'], ['kneeB', 'footB'], ['pelvis', 'kneeF'], ['kneeF', 'footF']
+  ];
+  const HIT_TO_POINT = { head: 'head', torso: 'neck', arm: 'handG', legs: 'footF', hat: 'head' };
+
+  function localToWorld(geo, lx, ly) {
+    return { x: geo.x + lx * geo.scale * geo.facing, y: geo.y + ly * geo.scale };
+  }
+
+  /** Seed a ragdoll from the standing pose at the moment of death. dirX/dirY = unit bullet direction. */
+  function makeRagdoll(geo, cfg, hatOn, raiseAtDeath, dirX, dirY, hitPart) {
+    const pts = {};
+    for (const k in RAG_LOCAL) {
+      const w = localToWorld(geo, RAG_LOCAL[k].x, RAG_LOCAL[k].y);
+      pts[k] = { x: w.x, y: w.y, px: w.x, py: w.y };
+    }
+    const hand = GB.chars.sideHandPoint(geo.x, geo.y, geo.scale, geo.facing, raiseAtDeath || 0);
+    pts.handG = { x: hand.x, y: hand.y, px: hand.x, py: hand.y };
+
+    // body-wide stagger in the direction the bullet was travelling
+    for (const k in pts) {
+      pts[k].px -= dirX * 9 + (Math.random() - 0.5) * 4;
+      pts[k].py -= dirY * 9 + (Math.random() - 0.5) * 4;
+    }
+    // the point that actually took the hit gets flung much harder
+    const hitPt = pts[HIT_TO_POINT[hitPart] || 'neck'];
+    if (hitPt) {
+      hitPt.px -= dirX * 58;
+      hitPt.py -= dirY * 58 - 34;
+    }
+
+    const links = RAG_LINKS.map(([a, b]) => {
+      const dx = pts[a].x - pts[b].x, dy = pts[a].y - pts[b].y;
+      return { a, b, len: Math.hypot(dx, dy) };
+    });
+
+    return { pts, links, cfg, hatOn, anchorX: geo.x, age: 0, settle: 0, poolSpawned: false };
+  }
+
+  function stepRagdoll(rag, dt) {
+    rag.age += dt;
+    if (rag.age > 1.3) return; // basic physics settles fast, then the pose freezes rather than fully unfolding
+    const GRAV = 1500, GROUND = 476, FRICTION = 0.4, DAMP = 0.9;
+    for (const k in rag.pts) {
+      const p = rag.pts[k];
+      const vx = (p.x - p.px) * DAMP, vy = (p.y - p.py) * DAMP;
+      p.px = p.x; p.py = p.y;
+      p.x += vx; p.y += vy + GRAV * dt * dt;
+    }
+    for (let iter = 0; iter < 6; iter++) {
+      for (const l of rag.links) {
+        const a = rag.pts[l.a], b = rag.pts[l.b];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        const diff = (dist - l.len) / dist * 0.5;
+        const ox = dx * diff, oy = dy * diff;
+        a.x += ox; a.y += oy;
+        b.x -= ox; b.y -= oy;
+      }
+    }
+    let moving = 0;
+    for (const k in rag.pts) {
+      const p = rag.pts[k];
+      if (p.y > GROUND) {
+        p.y = GROUND;
+        const vx = p.x - p.px;
+        p.px = p.x - vx * FRICTION;
+        p.py = p.y;
+      }
+      // a basic ragdoll shouldn't wander — keep the pile roughly where it fell
+      if (p.x > rag.anchorX + 180) { p.x = rag.anchorX + 180; p.px = p.x; }
+      if (p.x < rag.anchorX - 180) { p.x = rag.anchorX - 180; p.px = p.x; }
+      moving += Math.abs(p.x - p.px) + Math.abs(p.y - p.py);
+    }
+    rag.settle = moving < 0.6 ? rag.settle + dt : 0;
+  }
+
+  function ragLine(ctx, a, b) { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+  function ragDot(ctx, a, r) { ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, 7); ctx.fill(); }
+
+  function drawRagdoll(ctx, rag) {
+    const cfg = rag.cfg, p = rag.pts;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // far leg + far arm first (behind the torso)
+    ctx.strokeStyle = GB.chars.shade(cfg.pants, 0.8); ctx.lineWidth = 13;
+    ragLine(ctx, p.pelvis, p.kneeB); ragLine(ctx, p.kneeB, p.footB);
+    ctx.strokeStyle = GB.chars.shade(cfg.shirt, 0.72); ctx.lineWidth = 11;
+    ragLine(ctx, p.neck, p.handF);
+    // torso
+    ctx.strokeStyle = cfg.shirt; ctx.lineWidth = 22;
+    ragLine(ctx, p.neck, p.pelvis);
+    ctx.strokeStyle = cfg.vest; ctx.lineWidth = 10;
+    ragLine(ctx, p.neck, p.pelvis);
+    // near leg + gun arm
+    ctx.strokeStyle = cfg.pants; ctx.lineWidth = 13;
+    ragLine(ctx, p.pelvis, p.kneeF); ragLine(ctx, p.kneeF, p.footF);
+    ctx.strokeStyle = GB.chars.shade(cfg.shirt, 0.92); ctx.lineWidth = 11;
+    ragLine(ctx, p.neck, p.handG);
+    // boots + hands
+    ctx.fillStyle = GB.chars.shade(cfg.pants, 0.5);
+    ragDot(ctx, p.footB, 8); ragDot(ctx, p.footF, 8);
+    ctx.fillStyle = cfg.skin;
+    ragDot(ctx, p.handF, 6.5); ragDot(ctx, p.handG, 6.5);
+    // head, oriented along the neck->head bone
+    const ang = Math.atan2(p.head.y - p.neck.y, p.head.x - p.neck.x);
+    ctx.save();
+    ctx.translate(p.head.x, p.head.y);
+    ctx.rotate(ang + Math.PI / 2);
+    ctx.fillStyle = cfg.skin;
+    ctx.beginPath(); ctx.arc(0, 0, 15, 0, 7); ctx.fill();
+    ctx.fillStyle = cfg.hair;
+    ctx.beginPath(); ctx.arc(0, 2, 15, Math.PI * 0.15, Math.PI * 0.95); ctx.fill();
+    if (rag.hatOn) {
+      ctx.fillStyle = cfg.hat;
+      ctx.beginPath(); ctx.ellipse(0, -2, 20, 7, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, -11, 9, 8, 0, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function update(dt) {
     if (!S) return;
     S.t += dt; S.phaseT += dt;
@@ -525,7 +742,7 @@ GB.Duel = (function () {
     } else if (S.phase === 'countdown') {
       if (!S.inHolster) {
         setPhase('holster');
-        S.warn = 'TOO SOON! KEEP YOUR CURSOR ON YOUR REVOLVER'; S.warnT = 1.6;
+        S.warn = 'TOO SOON! KEEP YOUR CURSOR ON THE BARREL'; S.warnT = 1.6;
         GB.sfx.foul();
       } else {
         S.countT += dt;
@@ -555,15 +772,18 @@ GB.Duel = (function () {
           if (Math.random() < S.accuracy && !S.cheats.nohit) {
             const roll = playerDamageRoll();
             const hit = GB.chars.sidePointIn(PL.x, PL.y, PL.scale, PL.facing, roll.part);
+            const dir = GB.geom.norm(hit.x - m.x, hit.y - m.y);
+            const angle = Math.atan2(dir.y, dir.x);
             GB.fx.tracer(m.x, m.y, hit.x, hit.y);
-            GB.fx.blood(hit.x, hit.y, roll.part === 'head' ? 34 : 20, Math.PI - 0.35);
+            GB.fx.blood(hit.x, hit.y, roll.part === 'head' ? 34 : 20, angle);
+            GB.fx.gibs(hit.x, hit.y, roll.part === 'head' ? 8 : 4, angle, gibColors(P.cfg));
             addWound(P, PL, hit.x, hit.y);
             P.hp = Math.max(0, P.hp - roll.dmg);
             P.hitFlash = 1;
             P.hurt = 1;
             GB.sfx.fleshHit();
             GB.fx.spawnText(hit.x, hit.y - 40, '-' + Math.min(roll.dmg, P.maxHp) + (roll.part === 'head' ? '  HEAD!' : ''), '#ff5040', 22);
-            if (P.hp <= 0) return playerDown();
+            if (P.hp <= 0) { S.deathDir = dir; S.deathPart = roll.part; return playerDown(); }
           } else {
             const missY = 300 + Math.random() * 170;
             GB.fx.tracer(m.x, m.y, -30, missY);
@@ -580,14 +800,12 @@ GB.Duel = (function () {
         setPhase('over');
       }
     } else if (S.phase === 'over') {
-      const downed = S.result === 'win' ? O : S.result === 'lose' ? P : null;
-      const geo = S.result === 'win' ? OP : PL;
-      if (downed && downed.fall < 1) {
-        downed.fall = Math.min(1, downed.fall + dt * 1.7);
-        if (downed.fall >= 1) {
-          GB.fx.spawnDust(geo.x, geo.y, 14, true);
-          GB.sfx.fall();
-          GB.fx.pool(geo.x + geo.facing * 40, geo.y + 4, 40);
+      if (S.ragdoll) {
+        const rag = S.ragdoll.player || S.ragdoll.opp;
+        stepRagdoll(rag, dt);
+        if (!rag.poolSpawned && (rag.settle > 0.4 || rag.age > 1.0)) {
+          rag.poolSpawned = true;
+          GB.fx.pool(rag.pts.pelvis.x, rag.pts.pelvis.y, 40);
         }
       }
       if (!S.ended && S.phaseT > 2.3) {
@@ -606,7 +824,10 @@ GB.Duel = (function () {
 
   function playerDown() {
     S.result = 'lose';
-    S.player.fall = 0.001;
+    const dir = S.deathDir || { x: -1, y: -0.1 };
+    S.ragdoll = { player: makeRagdoll(PL, S.player.cfg, true, S.player.raise, dir.x, dir.y, S.deathPart) };
+    GB.sfx.fall();
+    GB.fx.spawnDust(PL.x, PL.y, 10, true);
     S.banner = 'GUNNED DOWN...'; S.bannerT = 99;
     GB.sfx.loseSting();
     setPhase('over');
@@ -629,40 +850,72 @@ GB.Duel = (function () {
     P.recoil = 1;
     P.raise = 1;
     GB.sfx.gunshot();
+
+    // aiming depends only on the straight line from the barrel through the cursor —
+    // the bullet keeps travelling along that line, it doesn't teleport to the cursor
     const m = GB.chars.sideMuzzlePoint(PL.x, PL.y, PL.scale, PL.facing, 1);
-    GB.fx.flash(m.x, m.y, Math.atan2(y - m.y, x - m.x));
-    GB.fx.tracer(m.x, m.y, x, y);
+    const ray = GB.geom.castRay(m.x, m.y, x, y, (px, py) => {
+      if (O.hp > 0) {
+        return GB.chars.sideHitTest(OP.x, OP.y, OP.scale, OP.facing, S.oppHeadScale(), O.hatOn, px, py);
+      }
+      if (S.ragdoll && S.ragdoll.opp) {
+        for (const k in S.ragdoll.opp.pts) {
+          const pt = S.ragdoll.opp.pts[k];
+          const dx = pt.x - px, dy = pt.y - py;
+          if (dx * dx + dy * dy < 676) return 'corpse:' + k;
+        }
+      }
+      return null;
+    }, { x: PL.facing, y: -0.05 });
 
-    if (O.hp <= 0) return;
+    const dir = GB.geom.norm(ray.x - m.x, ray.y - m.y);
+    const angle = Math.atan2(dir.y, dir.x);
+    GB.fx.flash(m.x, m.y, angle);
+    GB.fx.tracer(m.x, m.y, ray.x, ray.y);
 
-    const part = GB.chars.sideHitTest(OP.x, OP.y, OP.scale, OP.facing, S.oppHeadScale(), O.hatOn, x, y);
+    if (O.hp <= 0) {
+      if (typeof ray.hit === 'string' && ray.hit.indexOf('corpse:') === 0 && S.ragdoll && S.ragdoll.opp) {
+        const pt = S.ragdoll.opp.pts[ray.hit.slice(7)];
+        pt.px -= dir.x * 22; pt.py -= dir.y * 22;
+        GB.fx.gibs(ray.x, ray.y, 10, angle, gibColors(O.cfg));
+        GB.sfx.fleshHit();
+      }
+      return;
+    }
+
+    const part = ray.hit;
     if (part === 'hat') {
       O.hatOn = false;
-      GB.fx.spawnHat(x, y, O.cfg.hat, 1);
-      GB.fx.spawnText(x, y - 20, 'HAT TRICK! +50', '#e0a52e', 18);
+      GB.fx.spawnHat(ray.x, ray.y, O.cfg.hat, 1);
+      GB.fx.spawnText(ray.x, ray.y - 20, 'HAT TRICK! +50', '#e0a52e', 18);
       GB.sfx.ricochet();
       S.opts.onHatShot && S.opts.onHatShot();
-    } else if (part) {
+    } else if (part === 'head' || part === 'torso' || part === 'arm' || part === 'legs') {
       P.hitsLanded++;
       const dmg = oppDamageFor(part);
       O.hp = Math.max(0, O.hp - dmg);
       O.hurt = 1;
-      GB.fx.blood(x, y, part === 'head' ? 34 : 20, -0.35);
-      addWound(O, OP, x, y);
+      GB.fx.blood(ray.x, ray.y, part === 'head' ? 34 : 20, angle);
+      GB.fx.gibs(ray.x, ray.y, part === 'head' ? 8 : 4, angle, gibColors(O.cfg));
+      addWound(O, OP, ray.x, ray.y);
       GB.sfx.fleshHit();
-      GB.fx.spawnText(x, y - 30, part === 'head' ? 'HEADSHOT!' : '-' + dmg, part === 'head' ? '#ffd76b' : '#fff', part === 'head' ? 22 : 18);
+      GB.fx.spawnText(ray.x, ray.y - 30, part === 'head' ? 'HEADSHOT!' : '-' + dmg, part === 'head' ? '#ffd76b' : '#fff', part === 'head' ? 22 : 18);
       if (O.hp <= 0) {
         S.firstKillT = S.t;
         S.result = 'win';
+        S.ragdoll = { opp: makeRagdoll(OP, O.cfg, O.hatOn, O.raise, dir.x, dir.y, part) };
+        GB.sfx.fall();
+        GB.fx.spawnDust(OP.x, OP.y, 10, true);
         S.banner = S.opp.name + ' IS DOWN!';
         S.bannerT = 99;
         GB.sfx.winSting();
         setPhase('over');
       }
-    } else {
-      if (y > 440) GB.fx.spawnDust(x, Math.max(y, 450), 6);
-      else GB.fx.spawnShards(x, y, 'rgba(200,200,200,.9)', 4);
+    } else if (part === 'ground') {
+      GB.fx.spawnDust(ray.x, ray.y, 6);
       if (Math.random() < 0.6) GB.sfx.ricochet();
+    } else {
+      if (Math.random() < 0.4) GB.sfx.ricochet();
     }
   }
 
@@ -674,16 +927,23 @@ GB.Duel = (function () {
     GB.scene.draw(ctx, S.level, 1 / 60);
     GB.fx.drawStains(ctx);
 
-    // fallDir tips the body toward the middle of the street so it stays on screen
-    GB.chars.drawSide(ctx, PL.x, PL.y, PL.scale, P.cfg, {
-      facing: PL.facing, raise: P.raise, recoil: P.recoil,
-      fall: P.fall, fallDir: 1, hurt: P.hurt, breathe: S.t, wounds: P.wounds
-    });
-    GB.chars.drawSide(ctx, OP.x, OP.y, OP.scale, O.cfg, {
-      facing: OP.facing, raise: O.raise, recoil: O.recoil,
-      fall: O.fall, fallDir: -1, hurt: O.hurt, hatOff: !O.hatOn,
-      breathe: S.t + 1.7, headScale: S.oppHeadScale(), wounds: O.wounds
-    });
+    if (S.ragdoll && S.ragdoll.player) {
+      drawRagdoll(ctx, S.ragdoll.player);
+    } else {
+      GB.chars.drawSide(ctx, PL.x, PL.y, PL.scale, P.cfg, {
+        facing: PL.facing, raise: P.raise, recoil: P.recoil,
+        hurt: P.hurt, breathe: S.t, wounds: P.wounds
+      });
+    }
+    if (S.ragdoll && S.ragdoll.opp) {
+      drawRagdoll(ctx, S.ragdoll.opp);
+    } else {
+      GB.chars.drawSide(ctx, OP.x, OP.y, OP.scale, O.cfg, {
+        facing: OP.facing, raise: O.raise, recoil: O.recoil,
+        hurt: O.hurt, hatOff: !O.hatOn,
+        breathe: S.t + 1.7, headScale: S.oppHeadScale(), wounds: O.wounds
+      });
+    }
 
     GB.fx.draw(ctx);
     drawRest(ctx);
@@ -726,8 +986,8 @@ GB.Duel = (function () {
     ctx.fillStyle = '#e8d5a3';
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'rgba(0,0,0,.7)';
-    ctx.strokeText('HOLSTER', rz.x, rz.y + rz.r + 20);
-    ctx.fillText('HOLSTER', rz.x, rz.y + rz.r + 20);
+    ctx.strokeText('REST', rz.x, rz.y + rz.r + 20);
+    ctx.fillText('REST', rz.x, rz.y + rz.r + 20);
     ctx.restore();
   }
 
@@ -846,7 +1106,7 @@ GB.Duel = (function () {
       ctx.globalAlpha = 1;
     }
     if (S.phase === 'holster' && S.warnT <= 0) {
-      pulseText(ctx, 'REST YOUR CURSOR ON YOUR REVOLVER', W / 2, 120, 20, '#e8d5a3');
+      pulseText(ctx, 'REST YOUR CURSOR ON THE GUN BARREL', W / 2, 120, 20, '#e8d5a3');
     }
     if (S.warnT > 0) {
       pulseText(ctx, S.warn, W / 2, 120, 22, '#ff5040');
