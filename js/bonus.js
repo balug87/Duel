@@ -4,6 +4,7 @@ window.GB = window.GB || {};
 GB.Bonus = (function () {
   const W = 960, H = 540;
   const AST = { x: 600, y: 470, scale: 1.25 };
+  const MUZZLE = { x: 76, y: 500 };
   const ASSISTANT_CFG = {
     skin: '#e8b98a', hair: '#6b4a2a', hat: '#e8d5a3', shirt: '#e8e2d2',
     vest: '#8c6238', pants: '#4a3527', bandana: '#c23b2e', gun: '#555',
@@ -12,15 +13,17 @@ GB.Bonus = (function () {
   const BOTTLE_COLORS = ['#3e7d4f', '#7d5a2f', '#4f6b8c', '#7d3e5e'];
 
   let S = null;
+  let bottleIdSeq = 0;
 
   function bottleAt(x, y, i) {
-    return { x, y, vx: 0, vy: 0, rot: 0, vr: 0, air: false, alive: true, color: BOTTLE_COLORS[i % BOTTLE_COLORS.length] };
+    return { id: 'b' + (bottleIdSeq++), x, y, vx: 0, vy: 0, rot: 0, vr: 0, air: false, alive: true, color: BOTTLE_COLORS[i % BOTTLE_COLORS.length] };
   }
 
   function start(opts) {
     const type = opts.index % 2; // 0 = steady hands, 1 = toss-up
     const s = AST.scale;
     GB.fx.setGore(opts.settings.gore);
+    bottleIdSeq = 0;
     S = {
       opts, type, t: 0, phase: 'intro', phaseT: 0,
       title: type === 0 ? 'STEADY HANDS' : 'TOSS-UP',
@@ -30,7 +33,7 @@ GB.Bonus = (function () {
       tossesLeft: type === 1 ? 6 : 0, nextToss: 1.2,
       bottles: [],
       assistantHit: false, cooldown: 0,
-      aim: { x: W / 2, y: H / 2 },
+      aim: { x: W / 2, y: H / 2 }, gunAngle: -0.3,
       ended: false, endT: 0, banner: '', bannerCol: '#e0a52e'
     };
     if (type === 0) {
@@ -141,32 +144,52 @@ GB.Bonus = (function () {
     if (S.shots !== Infinity) S.shots--;
     GB.sfx.gunshot();
 
-    // bottles first (they sit in front of the assistant)
-    for (const b of S.bottles) {
-      if (!b.alive) continue;
-      const dx = x - b.x, dy = y - (b.y - 17);
-      if (Math.abs(dx) <= 14 && Math.abs(dy) <= 22) {
-        b.alive = false;
-        S.targetsDown++;
-        const pts = b.air ? 250 : 200;
-        S.points += pts;
-        GB.fx.spawnShards(b.x, b.y - 17, b.color, 14);
-        GB.fx.spawnText(b.x, b.y - 40, '+' + pts, '#e0a52e', 20);
-        GB.sfx.smash();
-        GB.sfx.point();
-        return;
+    // aiming depends only on the muzzle->cursor line, same as the duel — the
+    // bullet keeps travelling along it rather than teleporting to the cursor
+    const ray = GB.geom.castRay(MUZZLE.x, MUZZLE.y, x, y, (px, py) => {
+      for (const b of S.bottles) {
+        if (!b.alive) continue;
+        const dx = px - b.x, dy = py - (b.y - 17);
+        if (Math.abs(dx) <= 14 && Math.abs(dy) <= 22) return 'bottle:' + b.id;
       }
+      const part = GB.chars.hitTest(AST.x, AST.y, AST.scale, 1, true, px, py);
+      if (part) return 'ast:' + part;
+      return null;
+    }, { x: 1, y: -0.05 }, 472);
+
+    const dir = GB.geom.norm(ray.x - MUZZLE.x, ray.y - MUZZLE.y);
+    S.gunAngle = Math.atan2(dir.y, dir.x);
+    GB.fx.flash(MUZZLE.x, MUZZLE.y, S.gunAngle);
+    GB.fx.tracer(MUZZLE.x, MUZZLE.y, ray.x, ray.y);
+
+    if (typeof ray.hit === 'string' && ray.hit.indexOf('bottle:') === 0) {
+      const b = S.bottles.find(bb => bb.id === ray.hit.slice(7));
+      b.alive = false;
+      S.targetsDown++;
+      const pts = b.air ? 250 : 200;
+      S.points += pts;
+      GB.fx.spawnShards(b.x, b.y - 17, b.color, 14);
+      GB.fx.spawnText(b.x, b.y - 40, '+' + pts, '#e0a52e', 20);
+      GB.sfx.smash();
+      GB.sfx.point();
+      return;
     }
-    // then the assistant — any body part ends the round
-    const part = GB.chars.hitTest(AST.x, AST.y, AST.scale, 1, true, x, y);
-    if (part && part !== 'hat') { shootAssistant(x, y); return; }
-    if (part === 'hat') { GB.sfx.ricochet(); GB.fx.spawnText(x, y - 20, 'CAREFUL!', '#ff5040', 16); return; }
-    // miss
-    if (y > 440) GB.fx.spawnDust(x, Math.max(y, 450), 6);
-    if (Math.random() < 0.6) GB.sfx.ricochet();
+    if (typeof ray.hit === 'string' && ray.hit.indexOf('ast:') === 0) {
+      const part = ray.hit.slice(4);
+      if (part === 'hat') { GB.sfx.ricochet(); GB.fx.spawnText(ray.x, ray.y - 20, 'CAREFUL!', '#ff5040', 16); return; }
+      shootAssistant(ray.x, ray.y);
+      return;
+    }
+    if (ray.hit === 'ground') { GB.fx.spawnDust(ray.x, ray.y, 6); if (Math.random() < 0.6) GB.sfx.ricochet(); return; }
+    if (Math.random() < 0.4) GB.sfx.ricochet();
   }
 
-  function mouseMove(x, y) { if (S) { S.aim.x = x; S.aim.y = y; } }
+  function mouseMove(x, y) {
+    if (!S) return;
+    S.aim.x = x; S.aim.y = y;
+    const dir = GB.geom.norm(x - MUZZLE.x, y - MUZZLE.y);
+    S.gunAngle = Math.atan2(dir.y, dir.x);
+  }
 
   // ---------- drawing ----------
   function drawBottle(ctx, b) {
@@ -180,6 +203,19 @@ GB.Bonus = (function () {
     ctx.fillRect(-1, -24, 4, 18);                              // shine
     ctx.fillStyle = '#2b1a0a';
     ctx.fillRect(-3.5, -40, 7, 4);                             // cork
+    ctx.restore();
+  }
+
+  function drawGun(ctx) {
+    ctx.save();
+    ctx.translate(MUZZLE.x, MUZZLE.y);
+    ctx.rotate(S.gunAngle);
+    ctx.fillStyle = '#3a3a40';
+    GB.chars.rr(ctx, -10, -9, 46, 12, 4); ctx.fill();
+    ctx.fillStyle = '#54545c';
+    GB.chars.rr(ctx, -4, -15, 20, 13, 5); ctx.fill();
+    ctx.fillStyle = '#2b1a0a';
+    GB.chars.rr(ctx, -22, -4, 16, 22, 5); ctx.fill();
     ctx.restore();
   }
 
@@ -207,6 +243,7 @@ GB.Bonus = (function () {
     for (const b of S.bottles) if (b.alive) drawBottle(ctx, b);
 
     GB.fx.draw(ctx);
+    drawGun(ctx);
     drawHud(ctx);
     drawMessages(ctx);
     drawCrosshair(ctx);

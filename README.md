@@ -19,13 +19,17 @@ python3 -m http.server 8000
 
 The duel is staged in classic side view — you on the left, your opponent on the right.
 
-1. Rest your cursor on your gunslinger's **revolver** at the bottom-left and keep it there.
-2. Wait through the countdown — **3… 2… 1…** Move off the holster early and the count resets.
-3. On **FIRE!**, nudge your mouse across to your opponent and click. First gunslinger to drop loses.
-4. Headshots are lethal (configurable). Torso, arm and leg hits deal decreasing damage.
+1. Rest your cursor on the **barrel** of your gunslinger's hanging revolver, bottom-left, and keep it there.
+2. Wait through the countdown — **3… 2… 1…** Move off the barrel early and the count resets.
+3. On **FIRE!**, nudge your mouse and click. Aiming is a straight line from the barrel
+   through your cursor and beyond — the bullet travels that trajectory, not to wherever
+   the cursor happens to be, so lead your shot rather than hovering exactly over the target.
+4. Headshots are lethal (configurable). Torso, arm and leg hits deal decreasing damage,
+   and a limb in the bullet's path can block a shot meant for something behind it.
    You each get a limited number of shots — if both duelists are standing when the
    guns are empty, it's a **draw** and the duel replays.
-5. Shooting an opponent's hat off scores bonus points without hurting them.
+5. Shooting an opponent's hat off scores bonus points without hurting them. A kill
+   drops them in a basic ragdoll, stripping chunks of flesh and cloth on the way down.
 6. Every couple of duels you'll get a **bonus round**: shoot the bottles —
    and do **not** shoot the assistant.
 7. Score comes from draw speed, accuracy and remaining health. Beat every

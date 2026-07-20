@@ -550,6 +550,14 @@ GB.chars = (function () {
     return { x: x + gx * s * f, y: y + gy * s };
   }
 
+  /** World position of the gun-hand (wrist), short of the muzzle — used to seed ragdolls. */
+  function sideHandPoint(x, y, s, f, raise) {
+    const a = armAngle(raise || 0);
+    const hx = 2 + ARM_LEN * Math.cos(a);
+    const hy = -128 + ARM_LEN * Math.sin(a);
+    return { x: x + hx * s * f, y: y + hy * s };
+  }
+
   /** Small standing portrait for roster thumbnails / preview. */
   function drawPortrait(canvas, cfg, opts) {
     const c = canvas.getContext('2d');
@@ -567,5 +575,5 @@ GB.chars = (function () {
   }
 
   return { ROSTER, OPPONENTS, draw, zones, hitTest, muzzlePoint, drawPortrait, shade, rr,
-           drawSide, sideZones, sideHitTest, sidePointIn, sideMuzzlePoint };
+           drawSide, sideZones, sideHitTest, sidePointIn, sideMuzzlePoint, sideHandPoint };
 })();
