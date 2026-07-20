@@ -72,7 +72,7 @@
           <button class="btn btn-preset" data-preset="deadeye">DEADEYE</button>
         </div>
         <label class="slider-label">OPPONENT REACTION <span id="val-reaction"></span>
-          <input type="range" id="set-reaction" min="50" max="220" step="5">
+          <input type="range" id="set-reaction" min="30" max="300" step="10">
         </label>
         <label class="slider-label">OPPONENT ACCURACY <span id="val-accuracy"></span>
           <input type="range" id="set-accuracy" min="40" max="130" step="5">
@@ -122,6 +122,13 @@
             <option value="2">EVERY 2 DUELS</option>
             <option value="3">EVERY 3 DUELS</option>
             <option value="0">OFF</option>
+          </select>
+        </label>
+        <label class="row-label">BLOOD &amp; GORE
+          <select id="set-gore">
+            <option value="buckets">BUCKETS</option>
+            <option value="classic">CLASSIC</option>
+            <option value="off">OFF</option>
           </select>
         </label>
         <label class="row-label">SOUND

@@ -20,6 +20,7 @@ GB.Bonus = (function () {
   function start(opts) {
     const type = opts.index % 2; // 0 = steady hands, 1 = toss-up
     const s = AST.scale;
+    GB.fx.setGore(opts.settings.gore);
     S = {
       opts, type, t: 0, phase: 'intro', phaseT: 0,
       title: type === 0 ? 'STEADY HANDS' : 'TOSS-UP',
@@ -120,11 +121,12 @@ GB.Bonus = (function () {
     setPhase('over');
   }
 
-  function shootAssistant() {
+  function shootAssistant(x, y) {
     S.assistantHit = true;
     S.points = 0;
     S.banner = 'YOU SHOT THE ASSISTANT!';
     S.bannerCol = '#ff5040';
+    GB.fx.blood(x, y, 24, x < AST.x ? Math.PI - 0.4 : -0.4);
     GB.fx.spawnText(AST.x, AST.y - 220, 'OW!', '#ff5040', 26);
     GB.sfx.fleshHit();
     GB.sfx.loseSting();
@@ -157,7 +159,7 @@ GB.Bonus = (function () {
     }
     // then the assistant — any body part ends the round
     const part = GB.chars.hitTest(AST.x, AST.y, AST.scale, 1, true, x, y);
-    if (part && part !== 'hat') { shootAssistant(); return; }
+    if (part && part !== 'hat') { shootAssistant(x, y); return; }
     if (part === 'hat') { GB.sfx.ricochet(); GB.fx.spawnText(x, y - 20, 'CAREFUL!', '#ff5040', 16); return; }
     // miss
     if (y > 440) GB.fx.spawnDust(x, Math.max(y, 450), 6);
