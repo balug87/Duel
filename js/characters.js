@@ -17,29 +17,29 @@ GB.chars = (function () {
 
   // ---------- CPU opponents (stats before difficulty scaling) ----------
   const OPPONENTS = [
-    { name: 'SLOW-HAND SAM', reaction: 1500, accuracy: 0.42, interval: 950,
+    { name: 'SLOW-HAND SAM', reaction: 900, accuracy: 0.42, interval: 650,
       cfg: { skin: '#e8b98a', hair: '#6b4a2a', hat: '#8c6238', shirt: '#7d6b4a', vest: '#4b3a22', pants: '#5a4632', bandana: '#8c2f24', gun: '#4a4a52', hatStyle: 2, mustache: false, beard: false } },
-    { name: 'TWO-BIT TESS', reaction: 1280, accuracy: 0.5, interval: 880,
+    { name: 'TWO-BIT TESS', reaction: 800, accuracy: 0.5, interval: 620,
       cfg: { skin: '#d9a06b', hair: '#20140c', hat: '#5e3b6e', shirt: '#8c5a2f', vest: '#3a2312', pants: '#443346', bandana: '#c2a13b', gun: '#6b5a3a', hatStyle: 1, mustache: false, beard: false } },
-    { name: 'RATTLER ROY', reaction: 1100, accuracy: 0.56, interval: 820,
+    { name: 'RATTLER ROY', reaction: 720, accuracy: 0.56, interval: 590,
       cfg: { skin: '#c9a06e', hair: '#3a2a16', hat: '#4f7359', shirt: '#3e5e46', vest: '#22331f', pants: '#3c3c34', bandana: '#d8c15a', gun: '#555c66', hatStyle: 0, mustache: true, beard: false } },
-    { name: 'MISS FORTUNE', reaction: 950, accuracy: 0.62, interval: 760,
+    { name: 'MISS FORTUNE', reaction: 650, accuracy: 0.62, interval: 560,
       cfg: { skin: '#f2cfa6', hair: '#8c3b16', hat: '#7d0f0f', shirt: '#9c1f30', vest: '#3f0d14', pants: '#2c2c34', bandana: '#e8e2d2', gun: '#7a6a4a', hatStyle: 1, mustache: false, beard: false } },
-    { name: 'BIG IRON IKE', reaction: 830, accuracy: 0.68, interval: 700,
+    { name: 'BIG IRON IKE', reaction: 590, accuracy: 0.68, interval: 530,
       cfg: { skin: '#b57e4e', hair: '#171009', hat: '#43290f', shirt: '#355a7d', vest: '#1f3242', pants: '#3a3a3f', bandana: '#a34d1f', gun: '#2e2e33', hatStyle: 0, mustache: true, beard: true } },
-    { name: 'EL CARDO', reaction: 720, accuracy: 0.74, interval: 650,
+    { name: 'EL CARDO', reaction: 530, accuracy: 0.74, interval: 500,
       cfg: { skin: '#c98e5a', hair: '#111', hat: '#23231f', shirt: '#c2a13b', vest: '#6b1a12', pants: '#1f1f24', bandana: '#3e6b4f', gun: '#8f9399', hatStyle: 2, mustache: true, beard: false } },
-    { name: 'WIDOW WREN', reaction: 620, accuracy: 0.8, interval: 600,
+    { name: 'WIDOW WREN', reaction: 470, accuracy: 0.8, interval: 470,
       cfg: { skin: '#e5c3a1', hair: '#101014', hat: '#101014', shirt: '#26262c', vest: '#101014', pants: '#1a1a20', bandana: '#7d0f0f', gun: '#33363c', hatStyle: 1, mustache: false, beard: false } },
-    { name: 'DOC MIDNIGHT', reaction: 520, accuracy: 0.86, interval: 550,
+    { name: 'DOC MIDNIGHT', reaction: 420, accuracy: 0.86, interval: 440,
       cfg: { skin: '#d9b28c', hair: '#dcdcdc', hat: '#2b2b30', shirt: '#e8e2d2', vest: '#20242c', pants: '#20242c', bandana: '#355a7d', gun: '#4a4038', hatStyle: 0, mustache: true, beard: true } },
-    { name: 'THE VULTURE', reaction: 420, accuracy: 0.92, interval: 500,
+    { name: 'THE VULTURE', reaction: 370, accuracy: 0.92, interval: 410,
       cfg: { skin: '#c9a06e', hair: '#2c2c2c', hat: '#141414', shirt: '#3f2712', vest: '#141414', pants: '#141414', bandana: '#e0a52e', gun: '#181a1e', hatStyle: 0, mustache: false, beard: true } },
-    { name: 'HELLFIRE KATE', reaction: 380, accuracy: 0.94, interval: 470,
+    { name: 'HELLFIRE KATE', reaction: 320, accuracy: 0.94, interval: 380,
       cfg: { skin: '#f0c9a0', hair: '#8c1d14', hat: '#8c1d14', shirt: '#1a1a20', vest: '#8c1d14', pants: '#26262c', bandana: '#e0a52e', gun: '#8f9399', hatStyle: 1, mustache: false, beard: false } },
-    { name: 'JUDGE BONES', reaction: 350, accuracy: 0.95, interval: 450,
+    { name: 'JUDGE BONES', reaction: 270, accuracy: 0.95, interval: 360,
       cfg: { skin: '#e8e2d2', hair: '#e8e2d2', hat: '#101014', shirt: '#101014', vest: '#26262c', pants: '#101014', bandana: '#e8e2d2', gun: '#181a1e', hatStyle: 1, mustache: false, beard: false } },
-    { name: 'THE STRANGER', reaction: 320, accuracy: 0.97, interval: 430,
+    { name: 'THE STRANGER', reaction: 220, accuracy: 0.97, interval: 350,
       cfg: { skin: '#b58a62', hair: '#111', hat: '#3f2712', shirt: '#43290f', vest: '#2b1a0a', pants: '#2b1a0a', bandana: '#101014', gun: '#101014', hatStyle: 2, mustache: true, beard: true } }
   ];
 
@@ -315,6 +315,241 @@ GB.chars = (function () {
     return { x: x + 18 * s, y: y - 121 * s };
   }
 
+  // ================= side-profile rendering (duel view) =================
+
+  const ARM_DOWN = 1.32, ARM_LEVEL = -0.06, ARM_LEN = 38;
+
+  function armAngle(raise) { return ARM_DOWN + (ARM_LEVEL - ARM_DOWN) * raise; }
+
+  /**
+   * Draw a gunslinger in side profile.
+   * (x, y) = feet center. facing +1 = looking right, -1 = looking left.
+   * pose: { facing, raise (0 gun at hip .. 1 leveled), recoil, fall, fallDir,
+   *         hurt, hatOff, headScale, breathe, wounds: [{dx,dy}] (local coords) }
+   */
+  function drawSide(ctx, x, y, scale, cfg, pose) {
+    pose = pose || {};
+    const f = pose.facing || 1;
+    const hs = pose.headScale || 1;
+    const raise = pose.raise || 0;
+    const recoil = pose.recoil || 0;
+    const fall = pose.fall || 0;
+    const breathe = Math.sin((pose.breathe || 0) * 2.1) * 1.2;
+
+    ctx.save();
+    ctx.translate(x, y);
+    if (fall > 0) {
+      const dir = pose.fallDir || -f;
+      ctx.rotate(fall * fall * (Math.PI / 2 - 0.1) * dir);
+      ctx.translate(0, fall * 4);
+    }
+    ctx.scale(scale * f, scale);
+    ctx.translate(0, breathe * (1 - fall));
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    const skinD = shade(cfg.skin, 0.8);
+    const boot = shade(cfg.pants, 0.5);
+
+    // far arm, hanging behind the torso
+    ctx.strokeStyle = shade(cfg.shirt, 0.72);
+    ctx.lineWidth = 11;
+    ctx.beginPath(); ctx.moveTo(-4, -126); ctx.lineTo(-9, -90); ctx.stroke();
+    ctx.fillStyle = skinD;
+    ctx.beginPath(); ctx.arc(-9, -87, 6, 0, 7); ctx.fill();
+
+    // legs (back leg darker)
+    ctx.fillStyle = shade(cfg.pants, 0.8);
+    rr(ctx, -15, -82, 15, 74, 5); ctx.fill();
+    ctx.fillStyle = cfg.pants;
+    rr(ctx, 0, -82, 15, 74, 5); ctx.fill();
+    // boots, toes forward
+    ctx.fillStyle = shade(boot, 0.8);
+    rr(ctx, -16, -12, 19, 12, 3); ctx.fill();
+    ctx.fillStyle = boot;
+    rr(ctx, -1, -12, 21, 12, 3); ctx.fill();
+
+    // torso + vest (profile)
+    ctx.fillStyle = cfg.shirt;
+    rr(ctx, -17, -142, 34, 66, 8); ctx.fill();
+    ctx.fillStyle = cfg.vest;
+    rr(ctx, -6, -142, 23, 62, 6); ctx.fill();
+    // belt + buckle
+    ctx.fillStyle = '#2b1a0a';
+    ctx.fillRect(-17, -88, 34, 9);
+    ctx.fillStyle = '#e0a52e';
+    ctx.fillRect(7, -89, 9, 11);
+    // holster at the back hip
+    ctx.fillStyle = '#3f2712';
+    rr(ctx, -17, -80, 10, 21, 3); ctx.fill();
+
+    // ---- head (profile) ----
+    ctx.save();
+    ctx.translate(4, -160);
+    ctx.scale(hs, hs);
+    // bandana
+    ctx.fillStyle = cfg.bandana;
+    ctx.beginPath();
+    ctx.moveTo(-12, 14); ctx.lineTo(10, 14); ctx.lineTo(3, 30); ctx.closePath(); ctx.fill();
+    ctx.fillRect(-12, 10, 23, 7);
+    // skull + nose
+    ctx.fillStyle = cfg.skin;
+    ctx.beginPath(); ctx.arc(0, 0, 19, 0, 7); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(16, -5); ctx.lineTo(26, 1); ctx.lineTo(15, 7); ctx.closePath(); ctx.fill();
+    // ear
+    ctx.fillStyle = skinD;
+    ctx.beginPath(); ctx.arc(-8, 2, 4.5, 0, 7); ctx.fill();
+    // hair at the back of the head
+    ctx.fillStyle = cfg.hair;
+    ctx.beginPath();
+    ctx.arc(0, -1, 19, Math.PI * 0.55, Math.PI * 1.45);
+    ctx.quadraticCurveTo(-24, 2, -13, 12);
+    ctx.closePath(); ctx.fill();
+    // eye looking forward
+    const squint = pose.hurt ? 2 : 0;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(8, -4, 3.6, 4.4 - squint, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#1a1208';
+    ctx.beginPath(); ctx.arc(9.4, -3.5, 1.8, 0, 7); ctx.fill();
+    // brow
+    ctx.strokeStyle = cfg.hair;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(3, -10); ctx.lineTo(13, -8.6); ctx.stroke();
+    // beard / mustache / mouth
+    if (cfg.beard) {
+      ctx.fillStyle = cfg.hair;
+      ctx.beginPath();
+      ctx.moveTo(17, 3);
+      ctx.quadraticCurveTo(16, 22, 0, 20);
+      ctx.quadraticCurveTo(-8, 18, -8, 10);
+      ctx.quadraticCurveTo(2, 14, 17, 3);
+      ctx.closePath(); ctx.fill();
+    }
+    if (cfg.mustache) {
+      ctx.strokeStyle = cfg.hair;
+      ctx.lineWidth = 3.2;
+      ctx.beginPath(); ctx.moveTo(9, 6.5); ctx.quadraticCurveTo(15, 4.5, 19, 6.5); ctx.stroke();
+    } else if (!cfg.beard) {
+      ctx.strokeStyle = skinD;
+      ctx.lineWidth = 1.7;
+      ctx.beginPath(); ctx.moveTo(11, 9); ctx.lineTo(17, 8); ctx.stroke();
+    }
+    if (!pose.hatOff) drawHatSide(ctx, cfg);
+    ctx.restore();
+
+    // ---- gun arm with side-view revolver ----
+    const a = armAngle(raise) - recoil * 0.22;
+    ctx.save();
+    ctx.translate(2, -128);
+    ctx.rotate(a);
+    ctx.strokeStyle = shade(cfg.shirt, 0.92);
+    ctx.lineWidth = 12;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(ARM_LEN, 0); ctx.stroke();
+    ctx.fillStyle = cfg.skin;
+    ctx.beginPath(); ctx.arc(ARM_LEN, 0, 7, 0, 7); ctx.fill();
+    // revolver: grip, frame, cylinder, barrel, hammer
+    ctx.fillStyle = shade(cfg.gun, 0.7);
+    rr(ctx, ARM_LEN - 7, 1, 9, 13, 3); ctx.fill();
+    ctx.fillStyle = cfg.gun;
+    rr(ctx, ARM_LEN - 8, -8, 17, 10, 3); ctx.fill();
+    ctx.fillStyle = shade(cfg.gun, 1.3);
+    ctx.beginPath(); ctx.arc(ARM_LEN + 5, -3.5, 5.5, 0, 7); ctx.fill();
+    ctx.fillStyle = cfg.gun;
+    rr(ctx, ARM_LEN + 9, -7, 19, 6, 2); ctx.fill();
+    ctx.fillStyle = shade(cfg.gun, 0.6);
+    ctx.fillRect(ARM_LEN - 9, -11, 4, 5);
+    ctx.restore();
+
+    // wounds — dark blotches with a drip streak
+    if (pose.wounds) {
+      for (const w of pose.wounds) {
+        ctx.fillStyle = 'rgba(110,10,8,.9)';
+        ctx.beginPath(); ctx.ellipse(w.dx, w.dy, 3.6, 4.6, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(110,10,8,.45)';
+        ctx.fillRect(w.dx - 1.4, w.dy, 2.8, 8 + (w.drip || 0));
+        ctx.fillStyle = 'rgba(60,4,3,.9)';
+        ctx.beginPath(); ctx.arc(w.dx, w.dy, 1.6, 0, 7); ctx.fill();
+      }
+    }
+
+    if (pose.hurt > 0) {
+      ctx.globalAlpha = pose.hurt * 0.25;
+      ctx.fillStyle = '#ff2211';
+      rr(ctx, -24, -196 * hs + (hs - 1) * 20, 54, 194, 10); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
+  function drawHatSide(ctx, cfg) {
+    const hd = shade(cfg.hat, 0.75);
+    ctx.fillStyle = cfg.hat;
+    if (cfg.hatStyle === 2) {
+      ctx.beginPath(); ctx.ellipse(1, -13, 31, 7, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(1, -21, 12, 10, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = hd; ctx.fillRect(-11, -17, 24, 4);
+    } else if (cfg.hatStyle === 1) {
+      ctx.beginPath(); ctx.ellipse(1, -13, 25, 5.5, 0, 0, 7); ctx.fill();
+      rr(ctx, -11, -27, 24, 15, 4); ctx.fill();
+      ctx.fillStyle = hd; ctx.fillRect(-11, -17, 24, 4);
+    } else {
+      ctx.beginPath(); ctx.ellipse(1, -12, 27, 6.5, 0, 0, 7); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-12, -12);
+      ctx.quadraticCurveTo(-14, -32, -5, -33);
+      ctx.quadraticCurveTo(1, -28, 7, -33);
+      ctx.quadraticCurveTo(16, -32, 14, -12);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = hd; ctx.fillRect(-12, -16, 26, 4);
+    }
+  }
+
+  /** Hit zones for a side-profile gunslinger. */
+  function sideZones(x, y, s, f, headScale) {
+    const hs = headScale || 1;
+    return {
+      head: { cx: x + 4 * s * f, cy: y - 160 * s, r: 21 * s * hs },
+      hat: { x: x + 1 * s * f - 28 * s * hs, y: y - 193 * s * hs - (1 - hs) * 160 * s, w: 56 * s * hs, h: 24 * s * hs },
+      arm: f > 0
+        ? { x: x + 17 * s, y: y - 132 * s, w: 14 * s, h: 60 * s }
+        : { x: x - 31 * s, y: y - 132 * s, w: 14 * s, h: 60 * s },
+      torso: { x: x - 17 * s, y: y - 142 * s, w: 34 * s, h: 66 * s },
+      legs: { x: x - 17 * s, y: y - 82 * s, w: 37 * s, h: 82 * s }
+    };
+  }
+
+  /** Which part a shot at (px,py) hits on a side-profile figure. null = miss. */
+  function sideHitTest(x, y, s, f, headScale, hatOn, px, py) {
+    const z = sideZones(x, y, s, f, headScale);
+    if (inCircle(z.head, px, py)) return 'head';
+    if (hatOn && inRect(z.hat, px, py)) return 'hat';
+    if (inRect(z.arm, px, py)) return 'arm';
+    if (inRect(z.torso, px, py)) return 'torso';
+    if (inRect(z.legs, px, py)) return 'legs';
+    return null;
+  }
+
+  /** Random visible point inside a side-profile zone (for AI impact visuals). */
+  function sidePointIn(x, y, s, f, part) {
+    const z = sideZones(x, y, s, f, 1);
+    if (part === 'head') {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * z.head.r * 0.7;
+      return { x: z.head.cx + Math.cos(a) * r, y: z.head.cy + Math.sin(a) * r };
+    }
+    const rc = z[part === 'arm' ? 'arm' : part === 'legs' ? 'legs' : 'torso'];
+    return { x: rc.x + (0.2 + Math.random() * 0.6) * rc.w, y: rc.y + (0.15 + Math.random() * 0.7) * rc.h };
+  }
+
+  /** World position of the side-view revolver muzzle. */
+  function sideMuzzlePoint(x, y, s, f, raise) {
+    const a = armAngle(raise || 0);
+    const gx = 2 + (ARM_LEN + 26) * Math.cos(a) + 4 * Math.sin(a);
+    const gy = -128 + (ARM_LEN + 26) * Math.sin(a) - 4 * Math.cos(a);
+    return { x: x + gx * s * f, y: y + gy * s };
+  }
+
   /** Small standing portrait for roster thumbnails / preview. */
   function drawPortrait(canvas, cfg, opts) {
     const c = canvas.getContext('2d');
@@ -331,5 +566,6 @@ GB.chars = (function () {
     draw(c, w / 2, h * 0.94, scale, cfg, { raise: opts.raise || 0, breathe: opts.breathe || 0 });
   }
 
-  return { ROSTER, OPPONENTS, draw, zones, hitTest, muzzlePoint, drawPortrait, shade, rr };
+  return { ROSTER, OPPONENTS, draw, zones, hitTest, muzzlePoint, drawPortrait, shade, rr,
+           drawSide, sideZones, sideHitTest, sidePointIn, sideMuzzlePoint };
 })();

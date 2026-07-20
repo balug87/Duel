@@ -8,13 +8,14 @@ GB.UI = (function () {
     health: 100, ammo: 6, opponents: 9,
     damageModel: 'zones', oneShotHead: true, bonusFreq: 2,
     reactionScale: 100, accuracyScale: 100,
+    gore: 'buckets',
     sound: true, difficulty: 'normal'
   };
   const PRESETS = {
-    easy:    { reactionScale: 160, accuracyScale: 75 },
+    easy:    { reactionScale: 200, accuracyScale: 75 },
     normal:  { reactionScale: 100, accuracyScale: 100 },
-    hard:    { reactionScale: 75,  accuracyScale: 110 },
-    deadeye: { reactionScale: 55,  accuracyScale: 125 }
+    hard:    { reactionScale: 70,  accuracyScale: 110 },
+    deadeye: { reactionScale: 50,  accuracyScale: 125 }
   };
   const COLOR_PARTS = ['hat', 'shirt', 'vest', 'pants', 'bandana', 'skin', 'gun', 'hair'];
 
@@ -176,6 +177,7 @@ GB.UI = (function () {
     $('set-damage').value = settings.damageModel;
     $('set-headshot').value = settings.oneShotHead ? 'on' : 'off';
     $('set-bonus').value = String(settings.bonusFreq);
+    $('set-gore').value = settings.gore;
     $('set-sound').value = settings.sound ? 'on' : 'off';
     $('set-reaction').value = settings.reactionScale;
     $('set-accuracy').value = settings.accuracyScale;
@@ -198,6 +200,7 @@ GB.UI = (function () {
     $('set-damage').addEventListener('change', e => set('damageModel')(e.target.value));
     $('set-headshot').addEventListener('change', e => set('oneShotHead', v => v === 'on')(e.target.value));
     $('set-bonus').addEventListener('change', e => set('bonusFreq', Number)(e.target.value));
+    $('set-gore').addEventListener('change', e => set('gore')(e.target.value));
     $('set-sound').addEventListener('change', e => {
       settings.sound = e.target.value === 'on';
       GB.sfx.setEnabled(settings.sound);

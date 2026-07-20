@@ -17,9 +17,11 @@ python3 -m http.server 8000
 
 ## How to play
 
-1. Rest your cursor on the **HOLSTER** circle at the bottom-left and keep it there.
+The duel is staged in classic side view — you on the left, your opponent on the right.
+
+1. Rest your cursor on your gunslinger's **revolver** at the bottom-left and keep it there.
 2. Wait through the countdown — **3… 2… 1…** Move off the holster early and the count resets.
-3. On **FIRE!**, aim at your opponent and click. First gunslinger to drop loses.
+3. On **FIRE!**, nudge your mouse across to your opponent and click. First gunslinger to drop loses.
 4. Headshots are lethal (configurable). Torso, arm and leg hits deal decreasing damage.
    You each get a limited number of shots — if both duelists are standing when the
    guns are empty, it's a **draw** and the duel replays.
@@ -41,8 +43,9 @@ vest, pants, bandana, skin, gun and hair, and give them your own name.
 | Setting | Options |
 |---|---|
 | Difficulty presets | Easy / Normal / Hard / Deadeye |
-| Opponent reaction | 50%–220% fine-tune slider |
+| Opponent reaction | 30%–300% fine-tune slider (100% = original-style sub-second draws) |
 | Opponent accuracy | 40%–130% fine-tune slider |
+| Blood & gore | Buckets (default) / Classic / Off |
 | Starting health | 50 / 100 / 150 / 200 |
 | Shots per duel | 3 / 6 / 9 / 12 / unlimited |
 | Number of opponents | 3 / 6 / 9 / 12 |
