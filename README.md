@@ -6,7 +6,9 @@ procedurally on canvas and all sound is synthesized with WebAudio.
 
 ## Play
 
-Open `index.html` in any modern browser, or serve the folder:
+**Online:** https://balug87.github.io/Duel/ (deployed from `main` via GitHub Pages)
+
+Or open `index.html` in any modern browser, or serve the folder:
 
 ```
 python3 -m http.server 8000
