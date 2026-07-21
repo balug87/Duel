@@ -5,7 +5,7 @@ GB.Game = (function () {
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
 
-  let mode = 'menu';        // 'menu' | 'duel' | 'bonus'
+  let mode = 'menu';        // 'menu' | 'duel'
   let run = null;           // current playthrough
   let retryAction = null;
   let lastT = 0;
@@ -18,20 +18,13 @@ GB.Game = (function () {
       cheats,
       player: GB.UI.getCharacter(),
       level: Math.max(1, cheats.startLevel || 1),
-      score: 0,
-      duelsWon: 0,
-      bonusIndex: 0
+      score: 0
     };
   }
 
   function startGame() {
     newRun();
-    if (run.cheats.startBonus > 0) {
-      run.bonusIndex = run.cheats.startBonus - 1;
-      startBonus();
-    } else {
-      startDuel();
-    }
+    startDuel();
   }
 
   function opponentForLevel(level) {
@@ -58,20 +51,6 @@ GB.Game = (function () {
     });
   }
 
-  function startBonus() {
-    mode = 'bonus';
-    GB.UI.showScreen(null);
-    GB.Bonus.start({
-      index: run.bonusIndex,
-      level: run.level,
-      settings: run.settings,
-      cheats: run.cheats,
-      player: run.player,
-      onEnd: bonusEnded
-    });
-    run.bonusIndex++;
-  }
-
   function duelEnded(stats) {
     if (stats.result === 'win') {
       const speed = Math.max(0, Math.round((3.0 - stats.timeToKill) * 300));
@@ -79,24 +58,16 @@ GB.Game = (function () {
       const accuracy = Math.round(acc * 300);
       const health = Math.round((stats.hpLeft / stats.maxHp) * 300);
       run.score += 400 + speed + accuracy + health;
-      run.duelsWon++;
 
       if (run.level >= run.settings.opponents) return victory();
 
       run.level++;
-      const freq = run.settings.bonusFreq;
-      if (freq > 0 && run.duelsWon % freq === 0) startBonus();
-      else startDuel();
+      startDuel();
     } else if (stats.result === 'draw') {
       startDuel(); // same gunslinger, one more time
     } else {
       gameOver();
     }
-  }
-
-  function bonusEnded(stats) {
-    run.score += stats.points;
-    startDuel();
   }
 
   function victory() {
@@ -143,13 +114,11 @@ GB.Game = (function () {
   canvas.addEventListener('mousemove', e => {
     const p = canvasCoords(e);
     if (mode === 'duel') GB.Duel.mouseMove(p.x, p.y);
-    else if (mode === 'bonus') GB.Bonus.mouseMove(p.x, p.y);
   });
   canvas.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
     const p = canvasCoords(e);
     if (mode === 'duel') GB.Duel.mouseDown(p.x, p.y);
-    else if (mode === 'bonus') GB.Bonus.mouseDown(p.x, p.y);
   });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   window.addEventListener('keydown', e => {
@@ -174,9 +143,6 @@ GB.Game = (function () {
     if (mode === 'duel') {
       GB.Duel.update(dt);
       GB.Duel.draw(ctx);
-    } else if (mode === 'bonus') {
-      GB.Bonus.update(dt);
-      GB.Bonus.draw(ctx);
     }
     requestAnimationFrame(frame);
   }

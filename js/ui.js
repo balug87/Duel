@@ -6,7 +6,7 @@ GB.UI = (function () {
 
   const DEFAULT_SETTINGS = {
     health: 100, ammo: 6, opponents: 9,
-    damageModel: 'zones', oneShotHead: true, bonusFreq: 2,
+    damageModel: 'zones', oneShotHead: true,
     reactionScale: 100, accuracyScale: 100,
     gore: 'buckets',
     sound: true, difficulty: 'normal'
@@ -28,7 +28,7 @@ GB.UI = (function () {
 
   function freshCheats() {
     return { nohit: false, moreammo: false, fastfire: false, slowmo: false,
-             oneshot: false, bighead: false, startLevel: 0, startBonus: 0, any: false };
+             oneshot: false, bighead: false, startLevel: 0, any: false };
   }
 
   // ---------- persistence ----------
@@ -159,12 +159,6 @@ GB.UI = (function () {
       } else fb.textContent = '✘ LEVEL MUST BE 1–' + settings.opponents;
       return;
     }
-    m = code.match(/^BONUS([12])$/);
-    if (m) {
-      cheats.startBonus = parseInt(m[1], 10); cheats.any = true;
-      ok('STARTING AT BONUS ROUND ' + m[1]);
-      return;
-    }
     fb.textContent = '✘ UNKNOWN CODE';
     GB.sfx.foul();
   }
@@ -176,7 +170,6 @@ GB.UI = (function () {
     $('set-opponents').value = String(settings.opponents);
     $('set-damage').value = settings.damageModel;
     $('set-headshot').value = settings.oneShotHead ? 'on' : 'off';
-    $('set-bonus').value = String(settings.bonusFreq);
     $('set-gore').value = settings.gore;
     $('set-sound').value = settings.sound ? 'on' : 'off';
     $('set-reaction').value = settings.reactionScale;
@@ -199,7 +192,6 @@ GB.UI = (function () {
     $('set-opponents').addEventListener('change', e => set('opponents', Number)(e.target.value));
     $('set-damage').addEventListener('change', e => set('damageModel')(e.target.value));
     $('set-headshot').addEventListener('change', e => set('oneShotHead', v => v === 'on')(e.target.value));
-    $('set-bonus').addEventListener('change', e => set('bonusFreq', Number)(e.target.value));
     $('set-gore').addEventListener('change', e => set('gore')(e.target.value));
     $('set-sound').addEventListener('change', e => {
       settings.sound = e.target.value === 'on';
