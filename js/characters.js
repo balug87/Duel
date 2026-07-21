@@ -473,13 +473,6 @@ GB.chars = (function () {
       }
     }
 
-    if (pose.hurt > 0) {
-      ctx.globalAlpha = pose.hurt * 0.25;
-      ctx.fillStyle = '#ff2211';
-      rr(ctx, -24, -196 * hs + (hs - 1) * 20, 54, 194, 10); ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-
     ctx.restore();
   }
 

@@ -487,13 +487,13 @@ GB.Duel = (function () {
   const PL = { x: 115, y: 470, scale: 1.35, facing: 1 };
   const OP = { x: 845, y: 470, scale: 1.35, facing: -1 };
   const COUNT_STEP = 0.75;
+  const AMMO_HUD = { x: 64, y: H - 58 };
 
   let S = null;
 
   function restZone() {
-    // circle right on the barrel tip of the hanging revolver (raise = 0)
-    const m = GB.chars.sideMuzzlePoint(PL.x, PL.y, PL.scale, PL.facing, 0);
-    return { x: m.x, y: m.y, r: 40 };
+    // circle on the ammo cylinder HUD icon — the revolver showing the bullets
+    return { x: AMMO_HUD.x, y: AMMO_HUD.y, r: 40 };
   }
 
   function start(opts) {
@@ -742,7 +742,7 @@ GB.Duel = (function () {
     } else if (S.phase === 'countdown') {
       if (!S.inHolster) {
         setPhase('holster');
-        S.warn = 'TOO SOON! KEEP YOUR CURSOR ON THE BARREL'; S.warnT = 1.6;
+        S.warn = 'TOO SOON! KEEP YOUR CURSOR ON THE CYLINDER'; S.warnT = 1.6;
         GB.sfx.foul();
       } else {
         S.countT += dt;
@@ -946,8 +946,8 @@ GB.Duel = (function () {
     }
 
     GB.fx.draw(ctx);
-    drawRest(ctx);
     drawHud(ctx);
+    drawRest(ctx);
     drawMessages(ctx);
 
     if (P.hitFlash > 0) {
@@ -986,8 +986,8 @@ GB.Duel = (function () {
     ctx.fillStyle = '#e8d5a3';
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'rgba(0,0,0,.7)';
-    ctx.strokeText('REST', rz.x, rz.y + rz.r + 20);
-    ctx.fillText('REST', rz.x, rz.y + rz.r + 20);
+    ctx.strokeText('REST', rz.x, rz.y - rz.r - 10);
+    ctx.fillText('REST', rz.x, rz.y - rz.r - 10);
     ctx.restore();
   }
 
@@ -995,7 +995,7 @@ GB.Duel = (function () {
     const P = S.player, O = S.opp;
     drawHealthBar(ctx, 18, 16, P.name, P.hp, P.maxHp, false);
     drawHealthBar(ctx, W - 318, 16, O.name, O.hp, O.maxHp, true);
-    drawCylinder(ctx, 64, H - 58, P.ammo, S.cheats.moreammo);
+    drawCylinder(ctx, AMMO_HUD.x, AMMO_HUD.y, P.ammo, S.cheats.moreammo);
     drawCylinder(ctx, W - 64, H - 58, O.ammo, false);
 
     ctx.textAlign = 'center';
@@ -1106,7 +1106,7 @@ GB.Duel = (function () {
       ctx.globalAlpha = 1;
     }
     if (S.phase === 'holster' && S.warnT <= 0) {
-      pulseText(ctx, 'REST YOUR CURSOR ON THE GUN BARREL', W / 2, 120, 20, '#e8d5a3');
+      pulseText(ctx, 'REST YOUR CURSOR ON THE CYLINDER', W / 2, 120, 20, '#e8d5a3');
     }
     if (S.warnT > 0) {
       pulseText(ctx, S.warn, W / 2, 120, 22, '#ff5040');
