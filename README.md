@@ -84,7 +84,9 @@ css/style.css     western UI theme
 js/audio.js       WebAudio-synthesized sound effects
 js/characters.js  procedural vector gunslingers, hit zones, roster & opponents
 js/ragdoll.js     Matter.js limp-body cowboy (spawn / step / draw / tear)
-js/duel.js        duel state machine, AI, particles, scene rendering
+js/duel.js        ray-cast aiming + blood / gib / stain FX
+js/scene.js       procedural western street backdrop
+js/match.js       duel state machine, AI, ragdoll death hooks
 js/ui.js          menus, settings, cheat codes, localStorage persistence
 js/main.js        game loop, progression, scoring
 NOTES.md          comments on the ragdoll pass
