@@ -1,8 +1,8 @@
 # DUEL — Wild West Quick-Draw Showdown
 
 A browser-based quick-draw dueling game inspired by classic western reaction shooters.
-Pure HTML5 — no frameworks, no build step, no external assets. All art is drawn
-procedurally on canvas and all sound is synthesized with WebAudio.
+Pure HTML5 — no frameworks, no build step. All art is drawn procedurally on canvas
+and all sound is synthesized with WebAudio. Deaths use **Matter.js** limp-body ragdolls.
 
 ## Play
 
@@ -24,16 +24,20 @@ The duel is staged in classic side view — you on the left, your opponent on th
 3. On **FIRE!**, nudge your mouse and click. Aiming is a straight line from the barrel
    through your cursor and beyond — the bullet travels that trajectory, not to wherever
    the cursor happens to be, so lead your shot rather than hovering exactly over the target.
-4. Headshots are lethal (configurable). Torso, arm and leg hits deal decreasing damage,
-   and a limb in the bullet's path can block a shot meant for something behind it.
-   You each get a limited number of shots — if both duelists are standing when the
-   guns are empty, it's a **draw** and the duel replays.
+4. Headshots are lethal (configurable). Torso, arm and leg hits deal decreasing damage.
+   In **Buckets** gore, a killing shot can take a limb or the head clean off. You each get
+   a limited number of shots — if both duelists are standing when the guns are empty,
+   it's a **draw** and the duel replays.
 5. Shooting an opponent's hat off scores bonus points without hurting them. A kill
-   drops them in a basic ragdoll, stripping chunks of flesh and cloth on the way down.
+   drops them as a Matter.js ragdoll. Keep firing the corpse to knock it around —
+   Buckets mode can tear more joints off.
 6. Score comes from draw speed, accuracy and remaining health. Beat every
    gunslinger in the territory to win. High scores persist between visits.
 
 Press **Esc** during play to bail back to the title screen.
+
+See [NOTES.md](NOTES.md) for why the old Verlet doll was replaced and the Matter.js
+gotchas that matter if you touch the joints.
 
 ## Customization
 
@@ -79,7 +83,9 @@ index.html        page shell + DOM menu screens
 css/style.css     western UI theme
 js/audio.js       WebAudio-synthesized sound effects
 js/characters.js  procedural vector gunslingers, hit zones, roster & opponents
+js/ragdoll.js     Matter.js limp-body cowboy (spawn / step / draw / tear)
 js/duel.js        duel state machine, AI, particles, scene rendering
 js/ui.js          menus, settings, cheat codes, localStorage persistence
 js/main.js        game loop, progression, scoring
+NOTES.md          comments on the ragdoll pass
 ```
