@@ -130,6 +130,21 @@ GB.Duel = (function () {
     }
   }
 
+  /** Both still standing, cylinders empty → draw and rematch same level. */
+  function tryDeclareDraw() {
+    if (!S || S.phase !== 'fire') return false;
+    const P = S.player, O = S.opp;
+    if (P.hp <= 0 || O.hp <= 0) return false;
+    // Infinity (unlimited / moreammo) never draws on empty cylinders
+    if (!(P.ammo <= 0) || !(O.ammo <= 0)) return false;
+    S.result = 'draw';
+    S.banner = 'DRAW! REMATCH';
+    S.bannerT = 99;
+    GB.sfx.drawSting();
+    setPhase('over');
+    return true;
+  }
+
   function update(dt) {
     if (!S) return;
     S.t += dt; S.phaseT += dt;
@@ -211,22 +226,20 @@ GB.Duel = (function () {
           O.nextShot = S.t + (S.interval * (0.8 + Math.random() * 0.4)) / 1000;
         }
       }
-      if (P.hp > 0 && O.hp > 0 && P.ammo <= 0 && O.ammo <= 0 && S.phaseT > 1) {
-        S.result = 'draw';
-        S.banner = 'DRAW!'; S.bannerT = 99;
-        GB.sfx.drawSting();
-        setPhase('over');
-      }
+      tryDeclareDraw();
     } else if (S.phase === 'over') {
       if (GB.ragdoll) GB.ragdoll.step(dt);
-      if (!S.poolSpawned && S.phaseT > 0.7) {
+      // blood pool only when somebody actually dropped
+      if (S.result !== 'draw' && !S.poolSpawned && S.phaseT > 0.7) {
         S.poolSpawned = true;
         const who = S.result === 'lose' ? 'player' : 'opp';
         const p = GB.ragdoll && GB.ragdoll.pelvis(who);
         const geo = who === 'player' ? PL : OP;
         GB.fx.pool(p ? p.x : geo.x, p ? p.y : geo.y, 52);
       }
-      if (!S.ended && S.phaseT > 3.2) {
+      // draws rematch faster; kills keep the corpse flop on screen a bit longer
+      const endAfter = S.result === 'draw' ? 1.6 : 3.2;
+      if (!S.ended && S.phaseT > endAfter) {
         S.ended = true;
         S.opts.onEnd({
           result: S.result,
@@ -261,7 +274,11 @@ GB.Duel = (function () {
     if (S.phase !== 'fire' && S.phase !== 'over') return;
     if (S.phase === 'over' && S.result === 'lose') return;
     if (P.cooldown > 0) return;
-    if (P.ammo <= 0) { GB.sfx.dryFire(); return; }
+    if (P.ammo <= 0) {
+      GB.sfx.dryFire();
+      tryDeclareDraw();
+      return;
+    }
     P.cooldown = S.cheats.fastfire ? 0.07 : 0.28;
     if (!S.cheats.moreammo) P.ammo--;
     P.shots++;
@@ -331,6 +348,7 @@ GB.Duel = (function () {
     } else {
       if (Math.random() < 0.4) GB.sfx.ricochet();
     }
+    tryDeclareDraw();
   }
 
   function draw(ctx) {
@@ -417,7 +435,7 @@ GB.Duel = (function () {
     if (S.cheats.any) {
       ctx.font = 'italic 11px Georgia';
       ctx.fillStyle = '#e0a52e';
-      ctx.fillText('\u00b7 CHEATS ON \u00b7', W / 2, 68);
+      ctx.fillText('· CHEATS ON ·', W / 2, 68);
     }
   }
 
@@ -464,7 +482,7 @@ GB.Duel = (function () {
       ctx.font = 'bold 26px Georgia';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#2b1a0a';
-      ctx.fillText('\u221e', cx, cy + 9);
+      ctx.fillText('∞', cx, cy + 9);
       return;
     }
     const n = Math.min(6, Math.max(0, ammo));
