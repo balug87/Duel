@@ -163,6 +163,15 @@ GB.fx = (function () {
       rot: 0, vr: dir * 9, life: 1.4, color
     });
   }
+  function spawnGun(x, y, color, dir) {
+    parts.push({
+      type: 'gun', x, y,
+      vx: dir * (140 + Math.random() * 90),
+      vy: -180 - Math.random() * 80,
+      rot: 0, vr: dir * (8 + Math.random() * 6),
+      life: 1.5, color: color || '#4a4a52'
+    });
+  }
   function tracer(x1, y1, x2, y2) {
     parts.push({ type: 'tracer', x: x1, y: y1, x2, y2, life: 0.09, max: 0.09 });
   }
@@ -235,6 +244,14 @@ GB.fx = (function () {
         ctx.beginPath(); ctx.ellipse(0, 0, 24, 7, 0, 0, 7); ctx.fill();
         ctx.beginPath(); ctx.ellipse(0, -8, 11, 8, 0, 0, 7); ctx.fill();
         ctx.restore();
+      } else if (p.type === 'gun') {
+        ctx.save();
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-4, -3, 22, 6);
+        ctx.fillRect(-8, 0, 8, 11);
+        ctx.beginPath(); ctx.arc(4, 0, 5, 0, 7); ctx.fill();
+        ctx.restore();
       } else if (p.type === 'shard') {
         ctx.save();
         ctx.globalAlpha = a;
@@ -296,6 +313,6 @@ GB.fx = (function () {
   }
 
   return { setGore, initStains, blood, spawnBlood, drip, pool, gush, gibs, spawnDust, spawnShards,
-           spawnHat, tracer, flash, spawnText, update, draw, drawStains, clear,
+           spawnHat, spawnGun, tracer, flash, spawnText, update, draw, drawStains, clear,
            debugCounts: () => ({ parts: parts.length, gibs: parts.filter(p => p.type === 'gib').length, pools: pools.length }) };
 })();

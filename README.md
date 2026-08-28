@@ -21,16 +21,18 @@ The duel is staged in classic side view — you on the left, your opponent on th
 
 1. Rest your cursor on the **ammo cylinder** at the bottom-left and keep it there.
 2. Wait through the countdown — **3… 2… 1…** Move off the cylinder early and the count resets.
-3. On **FIRE!**, nudge your mouse and click. Aiming is a straight line from the barrel
-   through your cursor and beyond — the bullet travels that trajectory, not to wherever
-   the cursor happens to be, so lead your shot rather than hovering exactly over the target.
+3. On **FIRE!**, nudge your mouse up or down to pitch the gun, then click.
+   Shots travel along the barrel — not to the cursor. Recoil kicks the muzzle
+   off-line, so you have to re-aim between shots. A dashed guide shows the path.
 4. Headshots are lethal (configurable). Torso, arm and leg hits deal decreasing damage.
-   In **Buckets** gore, a killing shot can take a limb or the head clean off. You each get
-   a limited number of shots — if both duelists are standing when the guns are empty,
-   it's a **draw** and the duel replays.
+   Shoot the **gun-arm** off a living opponent and they are disarmed — they stand
+   there bleeding and cannot fire. In **Buckets** gore a killing shot can take a
+   limb or the head clean off. Limited shots: if both still stand when neither
+   can shoot, it's a **draw** and the duel replays.
 5. Shooting an opponent's hat off scores bonus points without hurting them. A kill
    drops them as a Matter.js ragdoll. Keep firing the corpse to knock it around —
-   Buckets mode can tear more joints off.
+   Buckets mode can tear more joints off. When you're done, press **Space** or
+   click the continue plate (the duel no longer auto-skips the flop).
 6. Score comes from draw speed, accuracy and remaining health. Beat every
    gunslinger in the territory to win. High scores persist between visits.
 
@@ -83,10 +85,11 @@ index.html        page shell + DOM menu screens
 css/style.css     western UI theme
 js/audio.js       WebAudio-synthesized sound effects
 js/characters.js  procedural vector gunslingers, hit zones, roster & opponents
+js/aim.js          barrel-elevation aiming + recoil kick
 js/ragdoll.js     Matter.js limp-body cowboy (spawn / step / draw / tear)
 js/duel.js        ray-cast aiming + blood / gib / stain FX
 js/scene.js       procedural western street backdrop
-js/match.js       duel state machine, AI, ragdoll death hooks
+js/match.js       duel state machine, AI zone-aim, disarm, hit-stop / shake
 js/ui.js          menus, settings, cheat codes, localStorage persistence
 js/main.js        game loop, progression, scoring
 NOTES.md          comments on the ragdoll pass

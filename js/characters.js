@@ -438,28 +438,38 @@ GB.chars = (function () {
     if (!pose.hatOff) drawHatSide(ctx, cfg);
     ctx.restore();
 
-    // ---- gun arm with side-view revolver ----
-    const a = armAngle(raise) - recoil * 0.22;
-    ctx.save();
-    ctx.translate(2, -128);
-    ctx.rotate(a);
-    ctx.strokeStyle = shade(cfg.shirt, 0.92);
-    ctx.lineWidth = 12;
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(ARM_LEN, 0); ctx.stroke();
-    ctx.fillStyle = cfg.skin;
-    ctx.beginPath(); ctx.arc(ARM_LEN, 0, 7, 0, 7); ctx.fill();
-    // revolver: grip, frame, cylinder, barrel, hammer
-    ctx.fillStyle = shade(cfg.gun, 0.7);
-    rr(ctx, ARM_LEN - 7, 1, 9, 13, 3); ctx.fill();
-    ctx.fillStyle = cfg.gun;
-    rr(ctx, ARM_LEN - 8, -8, 17, 10, 3); ctx.fill();
-    ctx.fillStyle = shade(cfg.gun, 1.3);
-    ctx.beginPath(); ctx.arc(ARM_LEN + 5, -3.5, 5.5, 0, 7); ctx.fill();
-    ctx.fillStyle = cfg.gun;
-    rr(ctx, ARM_LEN + 9, -7, 19, 6, 2); ctx.fill();
-    ctx.fillStyle = shade(cfg.gun, 0.6);
-    ctx.fillRect(ARM_LEN - 9, -11, 4, 5);
-    ctx.restore();
+    // ---- gun arm with side-view revolver (or a meat stump if shot off) ----
+    const missing = pose.missing || {};
+    if (missing.gunArm) {
+      ctx.fillStyle = '#4a0808';
+      ctx.beginPath(); ctx.arc(2, -128, 8, 0, 7); ctx.fill();
+      ctx.fillStyle = '#8c1a14';
+      ctx.beginPath(); ctx.arc(5, -128, 5.2, 0, 7); ctx.fill();
+      ctx.fillStyle = '#e8e2d2';
+      ctx.beginPath(); ctx.ellipse(6, -129, 2.2, 2.8, 0.3, 0, 7); ctx.fill();
+    } else {
+      const a = armAngle(raise) - recoil * 0.22;
+      ctx.save();
+      ctx.translate(2, -128);
+      ctx.rotate(a);
+      ctx.strokeStyle = shade(cfg.shirt, 0.92);
+      ctx.lineWidth = 12;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(ARM_LEN, 0); ctx.stroke();
+      ctx.fillStyle = cfg.skin;
+      ctx.beginPath(); ctx.arc(ARM_LEN, 0, 7, 0, 7); ctx.fill();
+      // revolver: grip, frame, cylinder, barrel, hammer
+      ctx.fillStyle = shade(cfg.gun, 0.7);
+      rr(ctx, ARM_LEN - 7, 1, 9, 13, 3); ctx.fill();
+      ctx.fillStyle = cfg.gun;
+      rr(ctx, ARM_LEN - 8, -8, 17, 10, 3); ctx.fill();
+      ctx.fillStyle = shade(cfg.gun, 1.3);
+      ctx.beginPath(); ctx.arc(ARM_LEN + 5, -3.5, 5.5, 0, 7); ctx.fill();
+      ctx.fillStyle = cfg.gun;
+      rr(ctx, ARM_LEN + 9, -7, 19, 6, 2); ctx.fill();
+      ctx.fillStyle = shade(cfg.gun, 0.6);
+      ctx.fillRect(ARM_LEN - 9, -11, 4, 5);
+      ctx.restore();
+    }
 
     // wounds — dark blotches with a drip streak
     if (pose.wounds) {
@@ -514,11 +524,11 @@ GB.chars = (function () {
   }
 
   /** Which part a shot at (px,py) hits on a side-profile figure. null = miss. */
-  function sideHitTest(x, y, s, f, headScale, hatOn, px, py) {
+  function sideHitTest(x, y, s, f, headScale, hatOn, px, py, missing) {
     const z = sideZones(x, y, s, f, headScale);
     if (inCircle(z.head, px, py)) return 'head';
     if (hatOn && inRect(z.hat, px, py)) return 'hat';
-    if (inRect(z.arm, px, py)) return 'arm';
+    if (!(missing && missing.gunArm) && inRect(z.arm, px, py)) return 'arm';
     if (inRect(z.torso, px, py)) return 'torso';
     if (inRect(z.legs, px, py)) return 'legs';
     return null;
@@ -535,20 +545,25 @@ GB.chars = (function () {
     return { x: rc.x + (0.2 + Math.random() * 0.6) * rc.w, y: rc.y + (0.15 + Math.random() * 0.7) * rc.h };
   }
 
-  /** World position of the side-view revolver muzzle. */
-  function sideMuzzlePoint(x, y, s, f, raise) {
-    const a = armAngle(raise || 0);
+  /** World position of the side-view revolver muzzle. recoil matches drawSide kick. */
+  function sideMuzzlePoint(x, y, s, f, raise, recoil) {
+    const a = armAngle(raise || 0) - (recoil || 0) * 0.22;
     const gx = 2 + (ARM_LEN + 26) * Math.cos(a) + 4 * Math.sin(a);
     const gy = -128 + (ARM_LEN + 26) * Math.sin(a) - 4 * Math.cos(a);
     return { x: x + gx * s * f, y: y + gy * s };
   }
 
   /** World position of the gun-hand (wrist), short of the muzzle — used to seed ragdolls. */
-  function sideHandPoint(x, y, s, f, raise) {
-    const a = armAngle(raise || 0);
+  function sideHandPoint(x, y, s, f, raise, recoil) {
+    const a = armAngle(raise || 0) - (recoil || 0) * 0.22;
     const hx = 2 + ARM_LEN * Math.cos(a);
     const hy = -128 + ARM_LEN * Math.sin(a);
     return { x: x + hx * s * f, y: y + hy * s };
+  }
+
+  /** Shoulder stump — arterial spray origin when the gun-arm is gone. */
+  function sideShoulderPoint(x, y, s, f) {
+    return { x: x + 2 * s * f, y: y - 128 * s };
   }
 
   /** Small standing portrait for roster thumbnails / preview. */
@@ -568,5 +583,6 @@ GB.chars = (function () {
   }
 
   return { ROSTER, OPPONENTS, draw, zones, hitTest, muzzlePoint, drawPortrait, shade, rr,
-           drawSide, sideZones, sideHitTest, sidePointIn, sideMuzzlePoint, sideHandPoint };
+           drawSide, sideZones, sideHitTest, sidePointIn, sideMuzzlePoint, sideHandPoint,
+           sideShoulderPoint };
 })();
