@@ -125,7 +125,9 @@ GB.Game = (function () {
     if (e.key === 'Escape' && mode !== 'menu') {
       mode = 'menu';
       GB.UI.showScreen('screen-title');
+      return;
     }
+    if (mode === 'duel' && GB.Duel.keyDown) GB.Duel.keyDown(e.key);
   });
 
   // ---------- scaling ----------
