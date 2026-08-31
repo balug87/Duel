@@ -79,12 +79,49 @@
         </label>
       </fieldset>
       <fieldset>
-        <legend>OPTIONS</legend>
-        <label class="row-label">GORE
-          <select id="set-gore">
+        <legend>GAME RULES</legend>
+        <label class="row-label">STARTING HEALTH
+          <select id="set-health">
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="150">150</option>
+            <option value="200">200</option>
+          </select>
+        </label>
+        <label class="row-label">SHOTS PER DUEL
+          <select id="set-ammo">
+            <option value="3">3</option>
+            <option value="6">6</option>
+            <option value="9">9</option>
+            <option value="12">12</option>
+            <option value="0">UNLIMITED</option>
+          </select>
+        </label>
+        <label class="row-label">OPPONENTS
+          <select id="set-opponents">
+            <option value="3">3</option>
+            <option value="6">6</option>
+            <option value="9">9</option>
+            <option value="12">12</option>
+          </select>
+        </label>
+        <label class="row-label">DAMAGE MODEL
+          <select id="set-damage">
+            <option value="zones">BODY ZONES</option>
+            <option value="uniform">UNIFORM</option>
+          </select>
+        </label>
+        <label class="row-label">ONE-SHOT HEADSHOTS
+          <select id="set-headshot">
+            <option value="on">ON</option>
             <option value="off">OFF</option>
-            <option value="classic">CLASSIC</option>
+          </select>
+        </label>
+        <label class="row-label">BLOOD & GORE
+          <select id="set-gore">
             <option value="buckets">BUCKETS</option>
+            <option value="classic">CLASSIC</option>
+            <option value="off">OFF</option>
           </select>
         </label>
         <label class="row-label">SOUND

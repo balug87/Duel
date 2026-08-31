@@ -246,8 +246,6 @@ GB.UI = (function () {
     $('name-input').value = character.name;
     syncColorInputs();
     renderPreview();
-    syncSettingsForm();
-    wireSettings();
 
     $('btn-play').addEventListener('click', () => { GB.sfx.unlock(); showScreen('screen-select'); });
     $('btn-settings').addEventListener('click', () => showScreen('screen-settings'));
@@ -255,6 +253,9 @@ GB.UI = (function () {
     $('btn-settings-back').addEventListener('click', () => showScreen('screen-title'));
     $('btn-help-back').addEventListener('click', () => showScreen('screen-title'));
     $('btn-select-back').addEventListener('click', () => showScreen('screen-title'));
+    $('btn-start').addEventListener('click', () => { GB.sfx.unlock(); app.onStart(); });
+    $('btn-results-retry').addEventListener('click', () => app.onRetry());
+    $('btn-results-title').addEventListener('click', () => showScreen('screen-title'));
 
     $('name-input').addEventListener('input', e => {
       character.name = e.target.value.toUpperCase().slice(0, 14) || 'STRANGER';
@@ -273,10 +274,8 @@ GB.UI = (function () {
       if (e.key === 'Enter') { applyCheat(e.target.value); e.target.value = ''; }
     });
 
-    $('btn-start').addEventListener('click', () => { GB.sfx.unlock(); app.onStart(); });
-    $('btn-results-retry').addEventListener('click', () => app.onRetry());
-    $('btn-results-title').addEventListener('click', () => showScreen('screen-title'));
-
+    syncSettingsForm();
+    wireSettings();
     showScreen('screen-title');
   }
 
