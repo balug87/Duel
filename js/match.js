@@ -235,18 +235,16 @@ GB.Duel = (function () {
     }
   }
 
-  /** Neither fighter can shoot any more (empty or disarmed) while both stand. */
+  /** Stalemate: both still standing, neither can fire (empty cylinder and/or no gun-arm). */
   function tryDeclareDraw() {
     if (!S || S.phase !== 'fire') return false;
     const P = S.player, O = S.opp;
     if (P.hp <= 0 || O.hp <= 0) return false;
     if (canFire(P) || canFire(O)) return false;
-    // unlimited ammo never draws on empty cylinders unless disarmed
-    const bothEmpty = (P.ammo <= 0) && (O.ammo <= 0);
-    const bothDisarmed = P.disarmed && O.disarmed;
-    if (!bothEmpty && !bothDisarmed) return false;
+    const pArmGone = !!(P.disarmed || P.missing.gunArm);
+    const oArmGone = !!(O.disarmed || O.missing.gunArm);
     S.result = 'draw';
-    S.banner = bothDisarmed && !bothEmpty ? 'BOTH DISARMED — DRAW' : 'DRAW! REMATCH';
+    S.banner = pArmGone && oArmGone ? 'BOTH DISARMED — DRAW' : 'DRAW! REMATCH';
     S.bannerT = 99;
     GB.sfx.drawSting();
     setPhase('over');
