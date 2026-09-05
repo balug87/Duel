@@ -86,17 +86,20 @@ GB.Duel = (function () {
     const a = S.accuracy;
     const r = Math.random();
     if (a > 0.88) {
-      if (r < 0.55) return 'head';
+      if (r < 0.10) return 'gun';
+      if (r < 0.58) return 'head';
       if (r < 0.90) return 'torso';
       return 'arm';
     }
     if (a > 0.65) {
-      if (r < 0.22) return 'head';
+      if (r < 0.04) return 'gun';
+      if (r < 0.24) return 'head';
       if (r < 0.72) return 'torso';
       if (r < 0.88) return 'arm';
       return 'legs';
     }
-    if (r < 0.08) return 'head';
+    if (r < 0.02) return 'gun';
+    if (r < 0.10) return 'head';
     if (r < 0.52) return 'torso';
     if (r < 0.72) return 'arm';
     return 'legs';
@@ -107,35 +110,28 @@ GB.Duel = (function () {
     const angle = Math.atan2(dir.y, dir.x);
     ent.hurt = 1;
     const robot = GB.chars.isRobot && GB.chars.isRobot(ent.cfg);
-    if (robot) {
-      GB.fx.sparks(hit.x, hit.y, part === 'head' ? 28 : 16, angle);
-      if (S.settings.gore !== 'off') {
-        GB.fx.gibs(hit.x, hit.y, part === 'head' ? 8 : 4, angle, gibColors(ent.cfg));
-      }
-      GB.sfx.metalHit ? GB.sfx.metalHit() : GB.sfx.ricochet();
-    } else {
-      GB.fx.blood(hit.x, hit.y, part === 'head' ? 40 : 22, angle);
-      GB.fx.gibs(hit.x, hit.y, part === 'head' ? 12 : 6, angle, gibColors(ent.cfg));
-      GB.sfx.fleshHit();
-    }
-    addWound(ent, geo, hit.x, hit.y);
-
-    if (part === 'arm' && !ent.missing.gunArm) {
-      const gore = S.settings.gore;
-      const sever = gore === 'buckets' ? Math.random() < 0.92 : gore === 'classic' ? Math.random() < 0.6 : false;
-      if (sever || gore !== 'off') {
-        disarm(ent, geo, hit, dir);
-        juice(dying ? 'kill' : 'disarm');
-        if (!dying) {
-          GB.fx.spawnText(hit.x, hit.y - 30, 'DISARMED!', '#ff6b4a', 20);
+    if (part !== 'gun') {
+      if (robot) {
+        GB.fx.sparks(hit.x, hit.y, part === 'head' ? 28 : 16, angle);
+        if (S.settings.gore !== 'off') {
+          GB.fx.gibs(hit.x, hit.y, part === 'head' ? 8 : 4, angle, gibColors(ent.cfg));
         }
+        GB.sfx.metalHit ? GB.sfx.metalHit() : GB.sfx.ricochet();
       } else {
-        juice('hit');
-        GB.fx.spawnText(hit.x, hit.y - 30, '-' + dmg, '#fff', 18);
+        GB.fx.blood(hit.x, hit.y, part === 'head' ? 40 : 22, angle);
+        GB.fx.gibs(hit.x, hit.y, part === 'head' ? 12 : 6, angle, gibColors(ent.cfg));
+        GB.sfx.fleshHit();
       }
+      addWound(ent, geo, hit.x, hit.y);
+    }
+
+    if (part === 'gun' && !ent.disarmed && !ent.missing.gunArm) {
+      disarm(ent, geo, hit, dir);
+      juice(dying ? 'kill' : 'disarm');
+      if (!dying) GB.fx.spawnText(hit.x, hit.y - 30, 'DISARMED!', '#ff6b4a', 20);
     } else {
       const tearPart = part === 'legs' ? (Math.random() < 0.55 ? 'nearLeg' : 'farLeg') : part;
-      if (shouldSever(part) && dying && tearPart !== 'torso' && part !== 'arm') {
+      if (shouldSever(part) && dying && tearPart !== 'torso' && part !== 'arm' && part !== 'gun') {
         markTear(ent, tearPart, hit, dir);
         juice(dying ? 'kill' : 'hit');
       } else {
@@ -151,21 +147,18 @@ GB.Duel = (function () {
   }
 
   function disarm(ent, geo, impact, dir) {
-    if (ent.missing.gunArm) return;
-    ent.missing.gunArm = true;
+    if (ent.disarmed || ent.missing.gunArm) return;
     ent.disarmed = true;
-    ent.raise = 0;
-    const hand = GB.chars.sideHandPoint(geo.x, geo.y, geo.scale, geo.facing, 0.7, 0);
+    const hand = GB.chars.sideHandPoint(geo.x, geo.y, geo.scale, geo.facing, ent.raise || 0.7, ent.recoil || 0);
     const facing = geo.facing;
     if (GB.fx.spawnGun) GB.fx.spawnGun(hand.x, hand.y, ent.cfg.gun, facing);
     const ang = Math.atan2(dir.y, dir.x);
+    GB.fx.sparks(impact.x, impact.y, 14, ang);
+    GB.fx.spawnDust(impact.x, impact.y, 5);
     if (GB.chars.isRobot && GB.chars.isRobot(ent.cfg)) {
-      GB.fx.sparks(impact.x, impact.y, 22, ang);
-      if (S.settings.gore !== 'off') GB.fx.gibs(impact.x, impact.y, 8, ang, gibColors(ent.cfg));
-      GB.sfx.metalHit ? GB.sfx.metalHit() : GB.sfx.smash();
+      GB.sfx.metalHit ? GB.sfx.metalHit() : GB.sfx.ricochet();
     } else {
-      GB.fx.gush(impact.x, impact.y, ang, 1.15);
-      GB.fx.gibs(impact.x, impact.y, 10, ang, gibColors(ent.cfg));
+      GB.sfx.ricochet();
       GB.sfx.smash();
     }
   }
@@ -177,6 +170,7 @@ GB.Duel = (function () {
       case 'head': return st.oneShotHead ? 9999 : 55;
       case 'torso': return 30;
       case 'arm': return 20;
+      case 'gun': return 12;
       default: return 15;
     }
   }
@@ -189,6 +183,7 @@ GB.Duel = (function () {
       case 'head': return st.oneShotHead ? 9999 : 60;
       case 'torso': return 34;
       case 'arm': return 22;
+      case 'gun': return 14;
       default: return 18;
     }
   }
@@ -241,8 +236,8 @@ GB.Duel = (function () {
 
   function shouldSever(part) {
     if (S.settings.gore !== 'buckets') return false;
+    if (part === 'gun' || part === 'arm') return false;
     if (part === 'head') return Math.random() < 0.92;
-    if (part === 'arm') return Math.random() < 0.82;
     if (part === 'legs') return Math.random() < 0.75;
     return false;
   }
@@ -372,7 +367,7 @@ GB.Duel = (function () {
           O.aimZone = pickAiZone();
           O.aimErrorY = (Math.random() - 0.5) * (1 - S.accuracy) * 70;
         }
-        const aimPt = GB.chars.sidePointIn(PL.x, PL.y, PL.scale, PL.facing, O.aimZone);
+        const aimPt = GB.chars.sidePointIn(PL.x, PL.y, PL.scale, PL.facing, O.aimZone, P.raise, P.recoil);
         const untilShot = O.nextShot - S.t;
         if (untilShot < 0.32 && O.ammo > 0) {
           trackRaise(O, OP, aimPt.x, aimPt.y + O.aimErrorY, dt, 10);
@@ -437,7 +432,7 @@ GB.Duel = (function () {
 
     const ray = GB.geom.castRay(m.x, m.y, m.x + bx * 900, m.y + by * 900, (px, py) => {
       if (P.hp <= 0) return null;
-      return GB.chars.sideHitTest(PL.x, PL.y, PL.scale, PL.facing, 1, true, px, py, P.missing);
+      return GB.chars.sideHitTest(PL.x, PL.y, PL.scale, PL.facing, 1, true, px, py, P.missing, P.raise, P.recoil, P.disarmed);
     }, { x: bx, y: by });
 
     const dir = GB.geom.norm(ray.x - m.x, ray.y - m.y);
@@ -447,7 +442,7 @@ GB.Duel = (function () {
     if (S.cheats.nohit) {
       GB.sfx.ricochet();
       GB.fx.spawnDust(30 + Math.random() * 120, 460 + Math.random() * 40, 5);
-    } else if (part === 'head' || part === 'torso' || part === 'arm' || part === 'legs') {
+    } else if (part === 'head' || part === 'torso' || part === 'arm' || part === 'legs' || part === 'gun') {
       const dmg = playerDamageFor(part);
       const dead = applyHit(P, PL, part, dmg, { x: ray.x, y: ray.y }, dir, true);
       if (dead) {
@@ -477,7 +472,8 @@ GB.Duel = (function () {
     if (S.phase !== 'fire' && S.phase !== 'over') return;
     if (S.phase === 'over' && S.result === 'lose') return;
     if (P.missing.gunArm || P.disarmed) {
-      S.warn = "CAN'T SHOOT — ARM'S GONE!"; S.warnT = 1.2;
+      S.warn = P.missing.gunArm ? "CAN'T SHOOT — ARM'S GONE!" : "CAN'T SHOOT — NO GUN!";
+      S.warnT = 1.2;
       GB.sfx.dryFire();
       tryDeclareDraw();
       return;
@@ -497,7 +493,7 @@ GB.Duel = (function () {
     const barrel = GB.aim ? GB.aim.barrelDir(P.raise, PL.facing, P.recoil) : { x: PL.facing, y: -0.05 };
     const ray = GB.geom.castRay(m.x, m.y, m.x + barrel.x * 900, m.y + barrel.y * 900, (px, py) => {
       if (O.hp > 0) {
-        return GB.chars.sideHitTest(OP.x, OP.y, OP.scale, OP.facing, S.oppHeadScale(), O.hatOn, px, py, O.missing);
+        return GB.chars.sideHitTest(OP.x, OP.y, OP.scale, OP.facing, S.oppHeadScale(), O.hatOn, px, py, O.missing, O.raise, O.recoil, O.disarmed);
       }
       if (GB.ragdoll && GB.ragdoll.hitAt(px, py)) return 'corpse';
       return null;
@@ -539,7 +535,7 @@ GB.Duel = (function () {
       GB.fx.spawnText(ray.x, ray.y - 20, 'HAT TRICK! +50', '#e0a52e', 18);
       GB.sfx.ricochet();
       S.opts.onHatShot && S.opts.onHatShot();
-    } else if (part === 'head' || part === 'torso' || part === 'arm' || part === 'legs') {
+    } else if (part === 'head' || part === 'torso' || part === 'arm' || part === 'legs' || part === 'gun') {
       P.hitsLanded++;
       const dmg = oppDamageFor(part);
       const dead = applyHit(O, OP, part, dmg, { x: ray.x, y: ray.y }, dir, false);
@@ -578,7 +574,8 @@ GB.Duel = (function () {
     if (!(S.ragdoll && S.ragdoll.player)) {
       GB.chars.drawSide(ctx, PL.x, PL.y, PL.scale, P.cfg, {
         facing: PL.facing, raise: P.raise, recoil: P.recoil,
-        hurt: P.hurt, breathe: S.t, wounds: P.wounds, missing: P.missing
+        hurt: P.hurt, breathe: S.t, wounds: P.wounds, missing: P.missing,
+        disarmed: P.disarmed
       });
     }
     if (!(S.ragdoll && S.ragdoll.opp)) {
@@ -586,7 +583,7 @@ GB.Duel = (function () {
         facing: OP.facing, raise: O.raise, recoil: O.recoil,
         hurt: O.hurt, hatOff: !O.hatOn,
         breathe: S.t + 1.7, headScale: S.oppHeadScale(), wounds: O.wounds,
-        missing: O.missing
+        missing: O.missing, disarmed: O.disarmed
       });
     }
     if (GB.ragdoll) GB.ragdoll.draw(ctx);

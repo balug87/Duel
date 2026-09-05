@@ -478,17 +478,19 @@ GB.chars = (function () {
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(ARM_LEN, 0); ctx.stroke();
       ctx.fillStyle = cfg.skin;
       ctx.beginPath(); ctx.arc(ARM_LEN, 0, 7, 0, 7); ctx.fill();
-      // revolver: grip, frame, cylinder, barrel, hammer
-      ctx.fillStyle = shade(cfg.gun, 0.7);
-      rr(ctx, ARM_LEN - 7, 1, 9, 13, 3); ctx.fill();
-      ctx.fillStyle = cfg.gun;
-      rr(ctx, ARM_LEN - 8, -8, 17, 10, 3); ctx.fill();
-      ctx.fillStyle = shade(cfg.gun, 1.3);
-      ctx.beginPath(); ctx.arc(ARM_LEN + 5, -3.5, 5.5, 0, 7); ctx.fill();
-      ctx.fillStyle = cfg.gun;
-      rr(ctx, ARM_LEN + 9, -7, 19, 6, 2); ctx.fill();
-      ctx.fillStyle = shade(cfg.gun, 0.6);
-      ctx.fillRect(ARM_LEN - 9, -11, 4, 5);
+      if (!pose.disarmed) {
+        // revolver: grip, frame, cylinder, barrel, hammer
+        ctx.fillStyle = shade(cfg.gun, 0.7);
+        rr(ctx, ARM_LEN - 7, 1, 9, 13, 3); ctx.fill();
+        ctx.fillStyle = cfg.gun;
+        rr(ctx, ARM_LEN - 8, -8, 17, 10, 3); ctx.fill();
+        ctx.fillStyle = shade(cfg.gun, 1.3);
+        ctx.beginPath(); ctx.arc(ARM_LEN + 5, -3.5, 5.5, 0, 7); ctx.fill();
+        ctx.fillStyle = cfg.gun;
+        rr(ctx, ARM_LEN + 9, -7, 19, 6, 2); ctx.fill();
+        ctx.fillStyle = shade(cfg.gun, 0.6);
+        ctx.fillRect(ARM_LEN - 9, -11, 4, 5);
+      }
       ctx.restore();
     }
 
@@ -553,10 +555,27 @@ GB.chars = (function () {
     };
   }
 
+  /** Revolver in arm-local coords (origin at shoulder, +x along the barrel). */
+  function gunLocalRect() {
+    return { x: ARM_LEN - 8, y: -11, w: 38, h: 26 };
+  }
+
+  function hitGun(px, py, x, y, s, f, raise, recoil) {
+    const a = armAngle(raise || 0) - (recoil || 0) * 0.22;
+    const ox = (px - x) / (s * f) - 2;
+    const oy = (py - y) / s + 128;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const lx = ox * ca + oy * sa;
+    const ly = -ox * sa + oy * ca;
+    const g = gunLocalRect();
+    return lx >= g.x && lx <= g.x + g.w && ly >= g.y && ly <= g.y + g.h;
+  }
+
   /** Which part a shot at (px,py) hits on a side-profile figure. null = miss. */
-  function sideHitTest(x, y, s, f, headScale, hatOn, px, py, missing) {
+  function sideHitTest(x, y, s, f, headScale, hatOn, px, py, missing, raise, recoil, disarmed) {
     const z = sideZones(x, y, s, f, headScale);
     if (inCircle(z.head, px, py)) return 'head';
+    if (!disarmed && !(missing && missing.gunArm) && hitGun(px, py, x, y, s, f, raise, recoil)) return 'gun';
     if (hatOn && inRect(z.hat, px, py)) return 'hat';
     if (!(missing && missing.gunArm) && inRect(z.arm, px, py)) return 'arm';
     if (inRect(z.torso, px, py)) return 'torso';
@@ -565,7 +584,11 @@ GB.chars = (function () {
   }
 
   /** Random visible point inside a side-profile zone (for AI impact visuals). */
-  function sidePointIn(x, y, s, f, part) {
+  function sidePointIn(x, y, s, f, part, raise, recoil) {
+    if (part === 'gun') {
+      const m = sideMuzzlePoint(x, y, s, f, raise == null ? 0.75 : raise, recoil || 0);
+      return { x: m.x - 14 * f, y: m.y + 3 };
+    }
     const z = sideZones(x, y, s, f, 1);
     if (part === 'head') {
       const a = Math.random() * Math.PI * 2, r = Math.random() * z.head.r * 0.7;
@@ -963,16 +986,18 @@ GB.chars = (function () {
       jointBall(ctx, 0, 0, 6, metal, dark);
       jointBall(ctx, ARM_LEN * 0.48, 0, 5, metal, dark);
       jointBall(ctx, ARM_LEN, 0, 6, metal, dark);
-      ctx.fillStyle = shade(cfg.gun, 0.7);
-      rr(ctx, ARM_LEN - 7, 1, 9, 13, 3); ctx.fill();
-      ctx.fillStyle = cfg.gun;
-      rr(ctx, ARM_LEN - 8, -8, 17, 10, 3); ctx.fill();
-      ctx.fillStyle = shade(cfg.gun, 1.3);
-      ctx.beginPath(); ctx.arc(ARM_LEN + 5, -3.5, 5.5, 0, 7); ctx.fill();
-      ctx.fillStyle = cfg.gun;
-      rr(ctx, ARM_LEN + 9, -7, 19, 6, 2); ctx.fill();
-      ctx.fillStyle = shade(cfg.gun, 0.6);
-      ctx.fillRect(ARM_LEN - 9, -11, 4, 5);
+      if (!pose.disarmed) {
+        ctx.fillStyle = shade(cfg.gun, 0.7);
+        rr(ctx, ARM_LEN - 7, 1, 9, 13, 3); ctx.fill();
+        ctx.fillStyle = cfg.gun;
+        rr(ctx, ARM_LEN - 8, -8, 17, 10, 3); ctx.fill();
+        ctx.fillStyle = shade(cfg.gun, 1.3);
+        ctx.beginPath(); ctx.arc(ARM_LEN + 5, -3.5, 5.5, 0, 7); ctx.fill();
+        ctx.fillStyle = cfg.gun;
+        rr(ctx, ARM_LEN + 9, -7, 19, 6, 2); ctx.fill();
+        ctx.fillStyle = shade(cfg.gun, 0.6);
+        ctx.fillRect(ARM_LEN - 9, -11, 4, 5);
+      }
       ctx.restore();
     }
 
