@@ -130,11 +130,11 @@ html, body {
 
 .roster-grid {
   display: grid;
-  grid-template-columns: repeat(4, 96px);
-  gap: 10px;
+  grid-template-columns: repeat(5, 82px);
+  gap: 8px;
 }
 .roster-slot {
-  width: 96px; height: 118px;
+  width: 82px; height: 104px;
   background: rgba(0,0,0,.35);
   border: 2px solid var(--wood-dark);
   border-radius: 6px;
@@ -144,7 +144,7 @@ html, body {
 }
 .roster-slot:hover { border-color: var(--paper-dark); }
 .roster-slot.active { border-color: var(--gold); box-shadow: 0 0 12px rgba(224,165,46,.6); }
-.roster-slot canvas { width: 92px; height: 96px; display: block; }
+.roster-slot canvas { width: 78px; height: 82px; display: block; }
 .roster-slot .slot-name {
   font-size: 10px;
   letter-spacing: 1px;

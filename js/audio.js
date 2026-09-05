@@ -73,6 +73,13 @@ GB.sfx = (function () {
       noise(0.09, 'lowpass', 350, 1, 0.55);
       tone('sine', 110, 55, 0.12, 0.4);
     },
+    metalHit() {
+      if (!enabled) return;
+      noise(0.07, 'highpass', 3200, 1.6, 0.42);
+      noise(0.1, 'bandpass', 1800, 4, 0.28);
+      tone('square', 1600, 420, 0.09, 0.12);
+      tone('sine', 2400, 900, 0.06, 0.08);
+    },
     smash() {
       if (!enabled) return;
       noise(0.22, 'highpass', 3200, 2, 0.5);

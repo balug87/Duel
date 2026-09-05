@@ -3,6 +3,22 @@ window.GB = window.GB || {};
 
 GB.chars = (function () {
 
+  // Original chrome endoskeleton — cinematic robot-cowboy, not a licensed character.
+  const CHROME_LOOK = {
+    robot: true,
+    skin: '#c8ccd2',
+    hair: '#2a2e34',
+    hat: '#2b1a0a',
+    shirt: '#a7aeb6',
+    vest: '#4a5158',
+    pants: '#7c848e',
+    bandana: '#ff2414',
+    gun: '#3a3e46',
+    hatStyle: 0,
+    mustache: false,
+    beard: false
+  };
+
   // ---------- roster of playable looks ----------
   const ROSTER = [
     { name: 'BUCK',    skin: '#e8b98a', hair: '#4a2f18', hat: '#6b4a2a', shirt: '#8c2f24', vest: '#3f2712', pants: '#39506b', bandana: '#d8c15a', gun: '#4a4a52', hatStyle: 0, mustache: true,  beard: false },
@@ -12,7 +28,8 @@ GB.chars = (function () {
     { name: 'JUNE',    skin: '#f2cfa6', hair: '#8c3b16', hat: '#7d2f28', shirt: '#c2a13b', vest: '#4b2c16', pants: '#333c46', bandana: '#3e6b4f', gun: '#7a6a4a', hatStyle: 1, mustache: false, beard: false },
     { name: 'GRAVES',  skin: '#d9b28c', hair: '#dcdcdc', hat: '#1d1d20', shirt: '#e8e2d2', vest: '#2b2b30', pants: '#1f1f24', bandana: '#101014', gun: '#8f9399', hatStyle: 0, mustache: true,  beard: true  },
     { name: 'COYOTE',  skin: '#b57e4e', hair: '#171009', hat: '#8c6238', shirt: '#a34d1f', vest: '#5e3b1a', pants: '#54452f', bandana: '#e0a52e', gun: '#4a4038', hatStyle: 2, mustache: false, beard: false },
-    { name: 'PREACH',  skin: '#e5c3a1', hair: '#3a3a3a', hat: '#141414', shirt: '#20242c', vest: '#101216', pants: '#20242c', bandana: '#e8e2d2', gun: '#33363c', hatStyle: 1, mustache: false, beard: true  }
+    { name: 'PREACH',  skin: '#e5c3a1', hair: '#3a3a3a', hat: '#141414', shirt: '#20242c', vest: '#101216', pants: '#20242c', bandana: '#e8e2d2', gun: '#33363c', hatStyle: 1, mustache: false, beard: true  },
+    { name: 'CHROME',  ...CHROME_LOOK }
   ];
 
   // ---------- CPU opponents (stats before difficulty scaling) ----------
@@ -31,6 +48,8 @@ GB.chars = (function () {
       cfg: { skin: '#c98e5a', hair: '#111', hat: '#23231f', shirt: '#c2a13b', vest: '#6b1a12', pants: '#1f1f24', bandana: '#3e6b4f', gun: '#8f9399', hatStyle: 2, mustache: true, beard: false } },
     { name: 'WIDOW WREN', reaction: 470, accuracy: 0.8, interval: 470,
       cfg: { skin: '#e5c3a1', hair: '#101014', hat: '#101014', shirt: '#26262c', vest: '#101014', pants: '#1a1a20', bandana: '#7d0f0f', gun: '#33363c', hatStyle: 1, mustache: false, beard: false } },
+    { name: 'CHROME', reaction: 430, accuracy: 0.90, interval: 450,
+      cfg: { ...CHROME_LOOK } },
     { name: 'DOC MIDNIGHT', reaction: 420, accuracy: 0.86, interval: 440,
       cfg: { skin: '#d9b28c', hair: '#dcdcdc', hat: '#2b2b30', shirt: '#e8e2d2', vest: '#20242c', pants: '#20242c', bandana: '#355a7d', gun: '#4a4038', hatStyle: 0, mustache: true, beard: true } },
     { name: 'THE VULTURE', reaction: 370, accuracy: 0.92, interval: 410,
@@ -69,6 +88,7 @@ GB.chars = (function () {
    */
   function draw(ctx, x, y, scale, cfg, pose) {
     pose = pose || {};
+    if (cfg && cfg.robot) return drawEndo(ctx, x, y, scale, cfg, pose);
     const s = scale;
     const hs = pose.headScale || 1;
     const raise = pose.raise || 0;
@@ -329,6 +349,7 @@ GB.chars = (function () {
    */
   function drawSide(ctx, x, y, scale, cfg, pose) {
     pose = pose || {};
+    if (cfg && cfg.robot) return drawEndoSide(ctx, x, y, scale, cfg, pose);
     const f = pose.facing || 1;
     const hs = pose.headScale || 1;
     const raise = pose.raise || 0;
@@ -471,15 +492,24 @@ GB.chars = (function () {
       ctx.restore();
     }
 
-    // wounds — dark blotches with a drip streak
+    // wounds — dark blotches with a drip streak (robots get scorched craters, no blood)
     if (pose.wounds) {
       for (const w of pose.wounds) {
-        ctx.fillStyle = 'rgba(110,10,8,.9)';
-        ctx.beginPath(); ctx.ellipse(w.dx, w.dy, 3.6, 4.6, 0, 0, 7); ctx.fill();
-        ctx.fillStyle = 'rgba(110,10,8,.45)';
-        ctx.fillRect(w.dx - 1.4, w.dy, 2.8, 8 + (w.drip || 0));
-        ctx.fillStyle = 'rgba(60,4,3,.9)';
-        ctx.beginPath(); ctx.arc(w.dx, w.dy, 1.6, 0, 7); ctx.fill();
+        if (cfg.robot) {
+          ctx.fillStyle = 'rgba(18,18,22,.92)';
+          ctx.beginPath(); ctx.ellipse(w.dx, w.dy, 3.4, 4.2, 0, 0, 7); ctx.fill();
+          ctx.fillStyle = 'rgba(255,170,40,.4)';
+          ctx.beginPath(); ctx.arc(w.dx, w.dy, 1.5, 0, 7); ctx.fill();
+          ctx.fillStyle = shade(cfg.skin, 0.45);
+          ctx.beginPath(); ctx.arc(w.dx + 1.2, w.dy - 1, 1.1, 0, 7); ctx.fill();
+        } else {
+          ctx.fillStyle = 'rgba(110,10,8,.9)';
+          ctx.beginPath(); ctx.ellipse(w.dx, w.dy, 3.6, 4.6, 0, 0, 7); ctx.fill();
+          ctx.fillStyle = 'rgba(110,10,8,.45)';
+          ctx.fillRect(w.dx - 1.4, w.dy, 2.8, 8 + (w.drip || 0));
+          ctx.fillStyle = 'rgba(60,4,3,.9)';
+          ctx.beginPath(); ctx.arc(w.dx, w.dy, 1.6, 0, 7); ctx.fill();
+        }
       }
     }
 
@@ -582,7 +612,440 @@ GB.chars = (function () {
     draw(c, w / 2, h * 0.94, scale, cfg, { raise: opts.raise || 0, breathe: opts.breathe || 0 });
   }
 
+  function isRobot(cfg) { return !!(cfg && cfg.robot); }
+
+  function jointBall(ctx, x, y, r, metal, dark) {
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.fillStyle = metal;
+    ctx.beginPath(); ctx.arc(x - r * 0.22, y - r * 0.28, r * 0.62, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.3)';
+    ctx.beginPath(); ctx.arc(x - r * 0.32, y - r * 0.38, r * 0.2, 0, 7); ctx.fill();
+  }
+
+  function piston(ctx, x0, y0, x1, y1, width, sleeve, metal, dark) {
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = width + 2.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.strokeStyle = metal;
+    ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    if (sleeve) {
+      const mx = (x0 * 0.45 + x1 * 0.55), my = (y0 * 0.45 + y1 * 0.55);
+      const a = Math.atan2(y1 - y0, x1 - x0);
+      ctx.save();
+      ctx.translate(mx, my);
+      ctx.rotate(a);
+      ctx.fillStyle = dark;
+      rr(ctx, -9, -width * 0.72, 18, width * 1.44, 2); ctx.fill();
+      ctx.fillStyle = shade(metal, 1.12);
+      ctx.fillRect(-6, -width * 0.28, 12, width * 0.5);
+      ctx.restore();
+    }
+  }
+
+  function wires(ctx, x, y, r) {
+    ctx.fillStyle = '#16181c';
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#c47a2a';
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const a = -0.9 + i * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(
+        x + Math.cos(a) * r * 1.3, y + Math.sin(a) * r * 0.2,
+        x + Math.cos(a) * r * 2.4, y + Math.sin(a) * r * 1.7
+      );
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#6aa4c8';
+    ctx.beginPath(); ctx.arc(x + 1, y - 1, 1.4, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffe9a0';
+    ctx.beginPath(); ctx.arc(x + r * 0.28, y - r * 0.22, 1.15, 0, 7); ctx.fill();
+  }
+
+  function drawEndoOptics(ctx, lx, ly, eye, pose, profile) {
+    const pulse = 0.7 + Math.sin((pose.breathe || 0) * 6.2) * 0.3 + (pose.hurt ? 0.35 : 0);
+    ctx.save();
+    ctx.fillStyle = eye;
+    ctx.shadowColor = eye;
+    ctx.shadowBlur = 11 * pulse;
+    if (profile) {
+      ctx.beginPath(); ctx.ellipse(lx, ly, 2.8, 3.4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fff5c8';
+      ctx.beginPath(); ctx.arc(lx + 0.8, ly - 1, 1, 0, 7); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.ellipse(-7, ly, 2.7, 3.3, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(7, ly, 2.7, 3.3, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fff5c8';
+      ctx.beginPath(); ctx.arc(-6.2, ly - 1.1, 1, 0, 7); ctx.arc(7.8, ly - 1.1, 1, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawEndoSkullFront(ctx, cfg, pose, hs) {
+    const metal = cfg.skin, dark = shade(cfg.skin, 0.55), eye = cfg.bandana || '#ff2414';
+    ctx.save();
+    ctx.translate(0, -160);
+    ctx.scale(hs, hs);
+    ctx.fillStyle = dark;
+    rr(ctx, -7, 16, 5, 14, 1); ctx.fill();
+    rr(ctx, 2, 16, 5, 14, 1); ctx.fill();
+    ctx.fillStyle = metal;
+    rr(ctx, -6, 17, 3, 12, 1); ctx.fill();
+    rr(ctx, 3, 17, 3, 12, 1); ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(0, -1, 19.6, 19.2, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = metal;
+    ctx.beginPath(); ctx.ellipse(0, -2, 18, 18, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = shade(metal, 0.72);
+    ctx.beginPath();
+    ctx.moveTo(-16, -6); ctx.lineTo(-6, -11); ctx.lineTo(6, -11); ctx.lineTo(16, -6);
+    ctx.lineTo(15, -1.5); ctx.lineTo(-15, -1.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(metal, 0.85);
+    ctx.beginPath(); ctx.ellipse(-13, 4, 6, 7, 0.3, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(13, 4, 6, 7, -0.3, 0, 7); ctx.fill();
+    ctx.fillStyle = '#0b0c0e';
+    ctx.beginPath(); ctx.ellipse(-7, -1, 5.4, 6.2, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(7, -1, 5.4, 6.2, 0, 0, 7); ctx.fill();
+    drawEndoOptics(ctx, 0, -1, eye, pose, false);
+    ctx.fillStyle = '#14161a';
+    ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(-3.2, 8); ctx.lineTo(3.2, 8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(metal, 0.62);
+    rr(ctx, -13, 8, 26, 9, 2); ctx.fill();
+    ctx.fillStyle = '#e6e8ee';
+    for (let i = -4; i <= 4; i++) ctx.fillRect(i * 2.8 - 1, 8.5, 2.2, 5.5);
+    ctx.fillStyle = dark;
+    ctx.fillRect(-13, 12.6, 26, 1.1);
+    ctx.fillStyle = shade(metal, 0.7);
+    rr(ctx, -12, 16, 24, 8, 3); ctx.fill();
+    ctx.fillStyle = '#dfe2e8';
+    for (let i = -3; i <= 3; i++) ctx.fillRect(i * 3 - 0.9, 16.5, 1.8, 4);
+    ctx.fillStyle = shade(metal, 0.45);
+    ctx.beginPath(); ctx.arc(-16, 2, 1.4, 0, 7); ctx.arc(16, 2, 1.4, 0, 7); ctx.fill();
+    if (!pose.hatOff) drawHat(ctx, cfg);
+    ctx.restore();
+  }
+
+  function drawEndoSkullSide(ctx, cfg, pose, hs) {
+    const metal = cfg.skin, dark = shade(cfg.skin, 0.55), eye = cfg.bandana || '#ff2414';
+    ctx.save();
+    ctx.translate(4, -160);
+    ctx.scale(hs, hs);
+    ctx.fillStyle = dark;
+    rr(ctx, -4, 16, 6, 13, 1); ctx.fill();
+    ctx.fillStyle = metal;
+    rr(ctx, -3, 17, 4, 11, 1); ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath(); ctx.ellipse(0, -1, 19.5, 19, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = metal;
+    ctx.beginPath(); ctx.ellipse(0, -2, 18, 17.5, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = shade(metal, 0.8);
+    ctx.beginPath();
+    ctx.moveTo(12, -6); ctx.lineTo(26, 1); ctx.lineTo(14, 8); ctx.lineTo(10, 4);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(cfg.hair, 1);
+    ctx.beginPath();
+    ctx.arc(0, -1, 18, Math.PI * 0.55, Math.PI * 1.45);
+    ctx.quadraticCurveTo(-22, 2, -12, 12);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(metal, 0.7);
+    ctx.beginPath();
+    ctx.moveTo(-8, -8); ctx.lineTo(12, -10); ctx.lineTo(14, -3); ctx.lineTo(-8, -2);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#0b0c0e';
+    ctx.beginPath(); ctx.ellipse(8, -3.5, 4.6, 5.4, 0, 0, 7); ctx.fill();
+    drawEndoOptics(ctx, 8.4, -3.5, eye, pose, true);
+    ctx.fillStyle = shade(metal, 0.62);
+    rr(ctx, 6, 6, 18, 8, 2); ctx.fill();
+    ctx.fillStyle = '#e6e8ee';
+    for (let i = 0; i < 6; i++) ctx.fillRect(8 + i * 2.6, 6.5, 2, 5);
+    ctx.fillStyle = shade(metal, 0.7);
+    rr(ctx, 4, 13, 18, 7, 2); ctx.fill();
+    ctx.fillStyle = '#dfe2e8';
+    for (let i = 0; i < 5; i++) ctx.fillRect(7 + i * 2.8, 13.5, 1.8, 3.6);
+    if (!pose.hatOff) drawHatSide(ctx, cfg);
+    ctx.restore();
+  }
+
+  function drawEndoChassis(ctx, cfg, profile) {
+    const metal = cfg.skin, dark = shade(cfg.skin, 0.55);
+    if (profile) {
+      ctx.fillStyle = dark;
+      rr(ctx, -14, -88, 30, 16, 4); ctx.fill();
+      ctx.fillStyle = metal;
+      rr(ctx, -12, -86, 26, 12, 3); ctx.fill();
+      ctx.fillStyle = '#1a140c';
+      ctx.fillRect(-17, -80, 34, 7);
+      ctx.fillStyle = '#e0a52e';
+      ctx.fillRect(7, -81, 9, 9);
+      ctx.fillStyle = '#2a1c10';
+      rr(ctx, -17, -78, 10, 20, 3); ctx.fill();
+      ctx.fillStyle = shade(metal, 0.7);
+      for (let i = 0; i < 7; i++) { rr(ctx, -3, -140 + i * 8, 8, 6, 2); ctx.fill(); }
+      ctx.strokeStyle = shade(cfg.shirt, 1.05);
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const y = -136 + i * 8.2;
+        ctx.beginPath();
+        ctx.moveTo(4, y);
+        ctx.quadraticCurveTo(18, y + 2, 16, y + 10);
+        ctx.stroke();
+      }
+      ctx.fillStyle = dark;
+      rr(ctx, -6, -96, 16, 12, 3); ctx.fill();
+      ctx.fillStyle = metal;
+      ctx.fillRect(-1, -94, 6, 8);
+    } else {
+      ctx.fillStyle = dark;
+      rr(ctx, -18, -88, 36, 16, 5); ctx.fill();
+      ctx.fillStyle = metal;
+      rr(ctx, -16, -86, 32, 12, 4); ctx.fill();
+      ctx.fillStyle = '#1a140c';
+      ctx.fillRect(-18, -80, 36, 7);
+      ctx.fillStyle = '#e0a52e';
+      ctx.fillRect(-6, -81, 12, 9);
+      ctx.fillStyle = '#2a1c10';
+      rr(ctx, 14, -78, 11, 20, 3); ctx.fill();
+      ctx.fillStyle = shade(metal, 0.7);
+      for (let i = 0; i < 7; i++) { rr(ctx, -5, -140 + i * 8, 10, 6, 2); ctx.fill(); }
+      ctx.strokeStyle = shade(cfg.shirt, 1.05);
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const y = -136 + i * 8.2;
+        const spread = 20 + i * 1.2;
+        ctx.beginPath(); ctx.moveTo(-5, y); ctx.quadraticCurveTo(-spread, y + 3, -spread + 4, y + 11); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(5, y); ctx.quadraticCurveTo(spread, y + 3, spread - 4, y + 11); ctx.stroke();
+      }
+      ctx.fillStyle = dark;
+      rr(ctx, -9, -96, 18, 14, 3); ctx.fill();
+      ctx.fillStyle = metal;
+      ctx.fillRect(-3, -94, 6, 10);
+      ctx.fillStyle = shade(metal, 1.2);
+      ctx.fillRect(-2, -93, 4, 3);
+    }
+  }
+
+  function drawEndo(ctx, x, y, scale, cfg, pose) {
+    pose = pose || {};
+    const hs = pose.headScale || 1;
+    const raise = pose.raise || 0;
+    const recoil = pose.recoil || 0;
+    const fall = pose.fall || 0;
+    const breathe = Math.sin((pose.breathe || 0) * 2.1) * 1.2;
+    const metal = cfg.skin, dark = shade(cfg.skin, 0.55);
+    const armsOut = pose.armsOut || 0;
+
+    ctx.save();
+    ctx.translate(x, y);
+    if (fall > 0) {
+      const dir = pose.fallDir || 1;
+      ctx.rotate(fall * fall * (Math.PI / 2 - 0.12) * dir);
+      ctx.translate(0, fall * 6);
+    }
+    ctx.scale(scale, scale);
+    ctx.translate(0, breathe * (1 - fall));
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    function leg(hipX, far) {
+      const m = far ? shade(metal, 0.78) : metal;
+      const d = far ? shade(dark, 0.9) : dark;
+      piston(ctx, hipX, -80, hipX, -44, far ? 7 : 8, true, m, d);
+      jointBall(ctx, hipX, -80, 6, m, d);
+      jointBall(ctx, hipX, -44, 5.5, m, d);
+      piston(ctx, hipX, -44, hipX + 2, -12, far ? 6.5 : 7.5, true, m, d);
+      ctx.fillStyle = d;
+      rr(ctx, hipX - 10, -14, 22, 14, 3); ctx.fill();
+      ctx.fillStyle = m;
+      rr(ctx, hipX - 8, -12, 18, 10, 3); ctx.fill();
+    }
+    leg(-10, true);
+    leg(10, false);
+    drawEndoChassis(ctx, cfg, false);
+
+    const farHx = armsOut > 0 ? -24 - 34 * armsOut : -27 - raise * 3;
+    const farHy = armsOut > 0 ? -128 - 14 * armsOut : -90;
+    piston(ctx, -24, -128, farHx, farHy, 7, true, shade(metal, 0.8), dark);
+    jointBall(ctx, -24, -128, 6, metal, dark);
+    jointBall(ctx, farHx, farHy, 5.5, shade(metal, 0.8), dark);
+
+    let hx, hy;
+    if (armsOut > 0) { hx = 24 + 34 * armsOut; hy = -128 - 14 * armsOut; }
+    else { hx = 26 - 8 * raise; hy = -74 - 44 * raise + recoil * 5; }
+    piston(ctx, 24, -128, hx, hy, 7.5, true, metal, dark);
+    jointBall(ctx, 24, -128, 6.5, metal, dark);
+    jointBall(ctx, hx, hy, 6, metal, dark);
+
+    if (raise > 0.15 && !armsOut) {
+      const lift = Math.min(1, (raise - 0.15) / 0.85);
+      ctx.save();
+      ctx.translate(hx, hy - 3);
+      ctx.scale(0.6 + 0.5 * lift, 0.6 + 0.5 * lift);
+      ctx.fillStyle = cfg.gun;
+      rr(ctx, -7, -10, 14, 12, 3); ctx.fill();
+      ctx.fillStyle = shade(cfg.gun, 1.25);
+      ctx.beginPath(); ctx.arc(0, -6, 5.5, 0, 7); ctx.fill();
+      ctx.fillStyle = shade(cfg.gun, 0.55);
+      ctx.beginPath(); ctx.arc(0, -6, 3, 0, 7); ctx.fill();
+      ctx.fillStyle = '#0a0a0a';
+      ctx.beginPath(); ctx.arc(0, -6, 1.6, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+
+    drawEndoSkullFront(ctx, cfg, pose, hs);
+    if (pose.hurt > 0) {
+      ctx.globalAlpha = pose.hurt * 0.2;
+      ctx.fillStyle = '#ffe9a0';
+      rr(ctx, -30, -180 * hs + (hs - 1) * 20, 60, 178, 12); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  function drawEndoSide(ctx, x, y, scale, cfg, pose) {
+    pose = pose || {};
+    const f = pose.facing || 1;
+    const hs = pose.headScale || 1;
+    const raise = pose.raise || 0;
+    const recoil = pose.recoil || 0;
+    const fall = pose.fall || 0;
+    const breathe = Math.sin((pose.breathe || 0) * 2.1) * 1.2;
+    const metal = cfg.skin, dark = shade(cfg.skin, 0.55);
+    const missing = pose.missing || {};
+
+    ctx.save();
+    ctx.translate(x, y);
+    if (fall > 0) {
+      const dir = pose.fallDir || -f;
+      ctx.rotate(fall * fall * (Math.PI / 2 - 0.1) * dir);
+      ctx.translate(0, fall * 4);
+    }
+    ctx.scale(scale * f, scale);
+    ctx.translate(0, breathe * (1 - fall));
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    piston(ctx, -4, -126, -9, -90, 6.5, true, shade(metal, 0.78), dark);
+    jointBall(ctx, -4, -126, 5.5, shade(metal, 0.78), dark);
+    jointBall(ctx, -9, -87, 5, shade(metal, 0.78), dark);
+
+    function leg(hipX, far) {
+      const m = far ? shade(metal, 0.78) : metal;
+      const d = far ? shade(dark, 0.9) : dark;
+      piston(ctx, hipX, -80, hipX, -44, far ? 6.5 : 7.5, true, m, d);
+      jointBall(ctx, hipX, -80, 5.5, m, d);
+      jointBall(ctx, hipX, -44, 5, m, d);
+      piston(ctx, hipX, -44, hipX + (far ? -1 : 2), -12, far ? 6 : 7, true, m, d);
+      ctx.fillStyle = d;
+      rr(ctx, hipX - 8, -12, far ? 18 : 21, 12, 3); ctx.fill();
+      ctx.fillStyle = m;
+      rr(ctx, hipX - 6, -10, far ? 16 : 18, 8, 3); ctx.fill();
+    }
+    leg(-8, true);
+    leg(8, false);
+    drawEndoChassis(ctx, cfg, true);
+    drawEndoSkullSide(ctx, cfg, pose, hs);
+
+    if (missing.gunArm) {
+      wires(ctx, 2, -128, 7);
+    } else {
+      const a = armAngle(raise) - recoil * 0.22;
+      ctx.save();
+      ctx.translate(2, -128);
+      ctx.rotate(a);
+      piston(ctx, 0, 0, ARM_LEN, 0, 7, true, metal, dark);
+      jointBall(ctx, 0, 0, 6, metal, dark);
+      jointBall(ctx, ARM_LEN * 0.48, 0, 5, metal, dark);
+      jointBall(ctx, ARM_LEN, 0, 6, metal, dark);
+      ctx.fillStyle = shade(cfg.gun, 0.7);
+      rr(ctx, ARM_LEN - 7, 1, 9, 13, 3); ctx.fill();
+      ctx.fillStyle = cfg.gun;
+      rr(ctx, ARM_LEN - 8, -8, 17, 10, 3); ctx.fill();
+      ctx.fillStyle = shade(cfg.gun, 1.3);
+      ctx.beginPath(); ctx.arc(ARM_LEN + 5, -3.5, 5.5, 0, 7); ctx.fill();
+      ctx.fillStyle = cfg.gun;
+      rr(ctx, ARM_LEN + 9, -7, 19, 6, 2); ctx.fill();
+      ctx.fillStyle = shade(cfg.gun, 0.6);
+      ctx.fillRect(ARM_LEN - 9, -11, 4, 5);
+      ctx.restore();
+    }
+
+    if (pose.wounds) {
+      for (const w of pose.wounds) {
+        ctx.fillStyle = 'rgba(18,18,22,.92)';
+        ctx.beginPath(); ctx.ellipse(w.dx, w.dy, 3.4, 4.2, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(255,170,40,.4)';
+        ctx.beginPath(); ctx.arc(w.dx, w.dy, 1.5, 0, 7); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawEndoRagdollPart(ctx, kind, cfg, doll) {
+    const metal = cfg.skin, dark = shade(cfg.skin, 0.55);
+    const broken = doll.broken || {};
+    const KIND_JOINT = {
+      head: 'neck', gunUpper: 'gunShoulder', gunLower: 'gunElbow',
+      farUpper: 'farShoulder', farLower: 'farElbow',
+      nearThigh: 'nearHip', nearShin: 'nearKnee',
+      farThigh: 'farHip', farShin: 'farKnee'
+    };
+    if (kind === 'head') {
+      ctx.save();
+      ctx.translate(-4, 160);
+      drawEndoSkullSide(ctx, cfg, { hatOff: !doll.hatOn, breathe: doll.age || 0 }, doll.headScale || 1);
+      ctx.restore();
+      if (broken.neck) wires(ctx, 0, 18, 7);
+      return;
+    }
+    if (kind === 'torso') {
+      ctx.save();
+      ctx.translate(0, 109);
+      drawEndoChassis(ctx, cfg, true);
+      ctx.restore();
+      if (doll.missing.head) wires(ctx, 4, -33, 9);
+      if (doll.missing.gunArm) wires(ctx, 2, -19, 7);
+      if (doll.missing.farArm) wires(ctx, -4, -17, 6.5);
+      if (doll.missing.nearLeg) wires(ctx, 7.5, 29, 8);
+      if (doll.missing.farLeg) wires(ctx, -7.5, 29, 8);
+      return;
+    }
+    const armish = kind === 'gunUpper' || kind === 'gunLower' || kind === 'farUpper' || kind === 'farLower';
+    if (armish) {
+      const darkArm = kind.indexOf('far') === 0;
+      const half = kind.indexOf('Lower') >= 0 ? 11 : 9;
+      const m = darkArm ? shade(metal, 0.78) : metal;
+      piston(ctx, -half, 0, half, 0, darkArm ? 6 : 7, true, m, dark);
+      jointBall(ctx, -half, 0, 5, m, dark);
+      jointBall(ctx, half, 0, 5, m, dark);
+      if (broken[KIND_JOINT[kind]]) wires(ctx, -half, 0, 6);
+      return;
+    }
+    const far = kind.indexOf('far') === 0;
+    const shin = kind.indexOf('Shin') >= 0;
+    const m = far ? shade(metal, 0.78) : metal;
+    if (shin) {
+      piston(ctx, 0, -18, 0, 10, far ? 6 : 7, true, m, dark);
+      jointBall(ctx, 0, -18, 5, m, dark);
+      ctx.fillStyle = dark;
+      rr(ctx, -8.5, 10, 21, 12, 3); ctx.fill();
+      ctx.fillStyle = m;
+      rr(ctx, -6.5, 12, 17, 8, 3); ctx.fill();
+    } else {
+      piston(ctx, 0, -15, 0, 15, far ? 6.5 : 7.5, true, m, dark);
+      jointBall(ctx, 0, -15, 5.5, m, dark);
+      jointBall(ctx, 0, 15, 5, m, dark);
+    }
+    if (broken[KIND_JOINT[kind]]) wires(ctx, 0, shin ? -24 : -17, 7);
+  }
+
   return { ROSTER, OPPONENTS, draw, zones, hitTest, muzzlePoint, drawPortrait, shade, rr,
            drawSide, sideZones, sideHitTest, sidePointIn, sideMuzzlePoint, sideHandPoint,
-           sideShoulderPoint };
+           sideShoulderPoint, isRobot, drawEndoRagdollPart, wires };
 })();

@@ -18,6 +18,14 @@ GB.UI = (function () {
     deadeye: { reactionScale: 50,  accuracyScale: 125 }
   };
   const COLOR_PARTS = ['hat', 'shirt', 'vest', 'pants', 'bandana', 'skin', 'gun', 'hair'];
+  const HUMAN_LABELS = {
+    hat: 'HAT', shirt: 'SHIRT', vest: 'VEST', pants: 'PANTS',
+    bandana: 'BANDANA', skin: 'SKIN', gun: 'GUN', hair: 'HAIR'
+  };
+  const ROBOT_LABELS = {
+    hat: 'HAT', shirt: 'CHASSIS', vest: 'RIBS', pants: 'PISTONS',
+    bandana: 'EYES', skin: 'METAL', gun: 'GUN', hair: 'CABLES'
+  };
 
   let settings = { ...DEFAULT_SETTINGS };
   let character = null;   // { rosterIndex, name, cfg }
@@ -42,6 +50,9 @@ GB.UI = (function () {
       if (c && c.cfg) character = c;
     } catch (e) { /* fresh start */ }
     if (!character) selectRosterIndex(0, false);
+    else if (GB.chars.ROSTER[character.rosterIndex] && GB.chars.ROSTER[character.rosterIndex].robot) {
+      character.cfg.robot = true;
+    }
   }
   function saveSettings() { localStorage.setItem('duel_settings', JSON.stringify(settings)); }
   function saveCharacter() { localStorage.setItem('duel_char', JSON.stringify(character)); }
@@ -112,8 +123,15 @@ GB.UI = (function () {
   }
 
   function syncColorInputs() {
-    document.querySelectorAll('#color-grid input[type=color]').forEach(inp => {
-      inp.value = character.cfg[inp.dataset.part] || '#888888';
+    const robot = !!(character.cfg && character.cfg.robot);
+    const labels = robot ? ROBOT_LABELS : HUMAN_LABELS;
+    document.querySelectorAll('#color-grid label').forEach(lab => {
+      const inp = lab.querySelector('input');
+      if (!inp) return;
+      const part = inp.dataset.part;
+      inp.value = character.cfg[part] || '#888888';
+      const map = labels[part];
+      if (map) lab.childNodes[0].textContent = map + ' ';
     });
   }
 

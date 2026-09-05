@@ -134,6 +134,25 @@ GB.fx = (function () {
     }
   }
 
+  const SPARK_COLORS = ['#ffe9a0', '#ffb020', '#fff6d2', '#ff6a20', '#c8e8ff'];
+
+  /** Impact sparks for metal bodies — never stains, never blood. */
+  function sparks(x, y, n, dir) {
+    const count = Math.max(4, n | 0);
+    for (let i = 0; i < count; i++) {
+      const a = (dir || 0) + (Math.random() - 0.5) * 1.8;
+      const sp = 80 + Math.random() * 320;
+      parts.push({
+        type: 'spark', x, y,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (40 + Math.random() * 90),
+        life: 0.1 + Math.random() * 0.22,
+        len: 5 + Math.random() * 12,
+        w: 1.1 + Math.random() * 1.4,
+        color: SPARK_COLORS[(Math.random() * SPARK_COLORS.length) | 0]
+      });
+    }
+  }
+
   function spawnDust(x, y, n, big) {
     for (let i = 0; i < n; i++) {
       parts.push({
@@ -188,6 +207,11 @@ GB.fx = (function () {
       if (p.type === 'tracer' || p.type === 'flash') continue;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
+      if (p.type === 'spark') {
+        p.vy += 180 * dt;
+        p.vx *= 0.98;
+        continue;
+      }
       p.vy += (p.type === 'dust' ? 60 : 620) * dt;
       if (p.rot !== undefined) p.rot += (p.vr || 0) * dt;
       // blood that reaches the dirt stains it permanently
@@ -267,6 +291,25 @@ GB.fx = (function () {
         GB.chars.rr(ctx, -p.w, -p.h, p.w * 2, p.h * 2, Math.min(p.w, p.h) * 0.6);
         ctx.fill();
         ctx.restore();
+      } else if (p.type === 'spark') {
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = p.w || 1.4;
+        ctx.lineCap = 'round';
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 10;
+        const dx = p.vx * 0.016 * (p.len || 8);
+        const dy = p.vy * 0.016 * (p.len || 8);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - dx, p.y - dy);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#fff';
+        ctx.globalAlpha = a * 0.85;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.15, 0, 7); ctx.fill();
+        ctx.restore();
       } else if (p.type === 'tracer') {
         ctx.globalAlpha = Math.max(0, p.life / p.max) * 0.85;
         ctx.strokeStyle = '#ffe9b0';
@@ -312,7 +355,7 @@ GB.fx = (function () {
     if (stainCtx) stainCtx.clearRect(0, 0, stain.width, stain.height);
   }
 
-  return { setGore, initStains, blood, spawnBlood, drip, pool, gush, gibs, spawnDust, spawnShards,
+  return { setGore, initStains, blood, spawnBlood, drip, pool, gush, gibs, sparks, spawnDust, spawnShards,
            spawnHat, spawnGun, tracer, flash, spawnText, update, draw, drawStains, clear,
            debugCounts: () => ({ parts: parts.length, gibs: parts.filter(p => p.type === 'gib').length, pools: pools.length }) };
 })();

@@ -106,10 +106,19 @@ GB.Duel = (function () {
     const dying = dmg >= ent.hp || (part === 'head' && S.settings.oneShotHead);
     const angle = Math.atan2(dir.y, dir.x);
     ent.hurt = 1;
-    GB.fx.blood(hit.x, hit.y, part === 'head' ? 40 : 22, angle);
-    GB.fx.gibs(hit.x, hit.y, part === 'head' ? 12 : 6, angle, gibColors(ent.cfg));
+    const robot = GB.chars.isRobot && GB.chars.isRobot(ent.cfg);
+    if (robot) {
+      GB.fx.sparks(hit.x, hit.y, part === 'head' ? 28 : 16, angle);
+      if (S.settings.gore !== 'off') {
+        GB.fx.gibs(hit.x, hit.y, part === 'head' ? 8 : 4, angle, gibColors(ent.cfg));
+      }
+      GB.sfx.metalHit ? GB.sfx.metalHit() : GB.sfx.ricochet();
+    } else {
+      GB.fx.blood(hit.x, hit.y, part === 'head' ? 40 : 22, angle);
+      GB.fx.gibs(hit.x, hit.y, part === 'head' ? 12 : 6, angle, gibColors(ent.cfg));
+      GB.sfx.fleshHit();
+    }
     addWound(ent, geo, hit.x, hit.y);
-    GB.sfx.fleshHit();
 
     if (part === 'arm' && !ent.missing.gunArm) {
       const gore = S.settings.gore;
@@ -150,9 +159,15 @@ GB.Duel = (function () {
     const facing = geo.facing;
     if (GB.fx.spawnGun) GB.fx.spawnGun(hand.x, hand.y, ent.cfg.gun, facing);
     const ang = Math.atan2(dir.y, dir.x);
-    GB.fx.gush(impact.x, impact.y, ang, 1.15);
-    GB.fx.gibs(impact.x, impact.y, 10, ang, gibColors(ent.cfg));
-    GB.sfx.smash();
+    if (GB.chars.isRobot && GB.chars.isRobot(ent.cfg)) {
+      GB.fx.sparks(impact.x, impact.y, 22, ang);
+      if (S.settings.gore !== 'off') GB.fx.gibs(impact.x, impact.y, 8, ang, gibColors(ent.cfg));
+      GB.sfx.metalHit ? GB.sfx.metalHit() : GB.sfx.smash();
+    } else {
+      GB.fx.gush(impact.x, impact.y, ang, 1.15);
+      GB.fx.gibs(impact.x, impact.y, 10, ang, gibColors(ent.cfg));
+      GB.sfx.smash();
+    }
   }
 
   function playerDamageFor(part) {
@@ -179,11 +194,12 @@ GB.Duel = (function () {
   }
 
   function addWound(ent, geo, px, py) {
-    if (S.settings.gore === 'off') return;
+    if (S.settings.gore === 'off' && !(GB.chars.isRobot && GB.chars.isRobot(ent.cfg))) return;
     ent.wounds.push({
       dx: (px - geo.x) / geo.scale * geo.facing,
       dy: (py - geo.y) / geo.scale,
-      drip: Math.random() * 6
+      drip: (GB.chars.isRobot && GB.chars.isRobot(ent.cfg)) ? 0 : Math.random() * 6,
+      scorch: !!(GB.chars.isRobot && GB.chars.isRobot(ent.cfg))
     });
   }
 
@@ -193,7 +209,12 @@ GB.Duel = (function () {
   }
 
   const GIB_BONE = '#e8e2d2';
-  function gibColors(cfg) { return ['#8c1f16', '#a3231b', cfg.shirt, GIB_BONE]; }
+  function gibColors(cfg) {
+    if (GB.chars.isRobot && GB.chars.isRobot(cfg)) {
+      return [cfg.skin, cfg.shirt, cfg.vest, '#d8dce2', '#2a2e34'];
+    }
+    return ['#8c1f16', '#a3231b', cfg.shirt, GIB_BONE];
+  }
 
   function dropBody(who, dir, impact, part) {
     const ent = who === 'player' ? S.player : S.opp;
@@ -291,7 +312,11 @@ GB.Duel = (function () {
         if (ent.dripT <= 0) {
           ent.dripT = 0.16 + Math.random() * 0.2;
           const w = woundWorld(ent, geo);
-          GB.fx.drip(w.x, w.y);
+          if (GB.chars.isRobot && GB.chars.isRobot(ent.cfg)) {
+            GB.fx.sparks(w.x, w.y, 3, -1.2);
+          } else {
+            GB.fx.drip(w.x, w.y);
+          }
         }
       }
       if (ent.missing.gunArm && ent.hp > 0) {
@@ -299,7 +324,11 @@ GB.Duel = (function () {
         if (ent.gushT <= 0) {
           ent.gushT = 0.11 + Math.random() * 0.1;
           const p = GB.chars.sideShoulderPoint(geo.x, geo.y, geo.scale, geo.facing);
-          GB.fx.gush(p.x, p.y, geo.facing > 0 ? 0.15 : Math.PI - 0.15, 0.4);
+          if (GB.chars.isRobot && GB.chars.isRobot(ent.cfg)) {
+            GB.fx.sparks(p.x, p.y, 5, geo.facing > 0 ? 0.15 : Math.PI - 0.15);
+          } else {
+            GB.fx.gush(p.x, p.y, geo.facing > 0 ? 0.15 : Math.PI - 0.15, 0.4);
+          }
         }
       }
     }
@@ -363,9 +392,12 @@ GB.Duel = (function () {
       if (S.result !== 'draw' && !S.poolSpawned && S.phaseT > 0.7) {
         S.poolSpawned = true;
         const who = S.result === 'lose' ? 'player' : 'opp';
-        const p = GB.ragdoll && GB.ragdoll.pelvis(who);
-        const geo = who === 'player' ? PL : OP;
-        GB.fx.pool(p ? p.x : geo.x, p ? p.y : geo.y, 52);
+        const loser = who === 'player' ? P : O;
+        if (!(GB.chars.isRobot && GB.chars.isRobot(loser.cfg))) {
+          const p = GB.ragdoll && GB.ragdoll.pelvis(who);
+          const geo = who === 'player' ? PL : OP;
+          GB.fx.pool(p ? p.x : geo.x, p ? p.y : geo.y, 52);
+        }
       }
       // Draws rematch on a short timer (no corpse to play with).
       // Kills wait for Space / clicking the continue plate.
@@ -486,9 +518,15 @@ GB.Duel = (function () {
       if (ray.hit === 'corpse' && GB.ragdoll) {
         const info = GB.ragdoll.hitAt(ray.x, ray.y);
         const torn = info && GB.ragdoll.shot(info, dir, S.settings.gore === 'buckets');
-        GB.fx.gibs(ray.x, ray.y, torn ? 14 : 8, angle, gibColors(O.cfg));
-        GB.fx.blood(ray.x, ray.y, torn ? 28 : 16, angle);
-        GB.sfx.fleshHit();
+        if (GB.chars.isRobot && GB.chars.isRobot(O.cfg)) {
+          GB.fx.sparks(ray.x, ray.y, torn ? 20 : 12, angle);
+          if (S.settings.gore !== 'off') GB.fx.gibs(ray.x, ray.y, torn ? 10 : 5, angle, gibColors(O.cfg));
+          GB.sfx.metalHit ? GB.sfx.metalHit() : GB.sfx.ricochet();
+        } else {
+          GB.fx.gibs(ray.x, ray.y, torn ? 14 : 8, angle, gibColors(O.cfg));
+          GB.fx.blood(ray.x, ray.y, torn ? 28 : 16, angle);
+          GB.sfx.fleshHit();
+        }
         juice(torn ? 'disarm' : 'hit');
         if (torn) GB.fx.spawnText(ray.x, ray.y - 24, 'TORN OFF!', '#ff6b4a', 16);
       }
@@ -560,8 +598,13 @@ GB.Duel = (function () {
     drawMessages(ctx);
     if (P.hitFlash > 0) {
       const g = ctx.createRadialGradient(W / 2, H / 2, 180, W / 2, H / 2, 560);
-      g.addColorStop(0, 'rgba(160,20,10,0)');
-      g.addColorStop(1, 'rgba(160,20,10,' + (P.hitFlash * 0.4) + ')');
+      if (GB.chars.isRobot && GB.chars.isRobot(P.cfg)) {
+        g.addColorStop(0, 'rgba(200,180,80,0)');
+        g.addColorStop(1, 'rgba(255,200,60,' + (P.hitFlash * 0.35) + ')');
+      } else {
+        g.addColorStop(0, 'rgba(160,20,10,0)');
+        g.addColorStop(1, 'rgba(160,20,10,' + (P.hitFlash * 0.4) + ')');
+      }
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, W, H);
     }

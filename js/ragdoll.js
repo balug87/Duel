@@ -244,8 +244,18 @@ GB.ragdoll = (function () {
       bodies: bodies,
       joints: joints,
       broken: {},
-      age: 0
+      age: 0,
+      heavy: !!(opts.cfg && opts.cfg.robot)
     };
+    if (doll.heavy) {
+      for (let i = 0; i < parts.length; i++) {
+        const b = parts[i];
+        Mt.Body.setDensity(b, b.density * 2.8);
+        b.frictionAir = (b.frictionAir || 0.04) * 0.5;
+        b.restitution = Math.min(0.05, (b.restitution || 0.08) * 0.3);
+        b.friction = Math.min(0.98, (b.friction || 0.8) + 0.1);
+      }
+    }
     dolls.push(doll);
     applyImpulse(doll, opts.dir || { x: f, y: -0.2 }, opts.impact || torsoC, opts.part || 'torso');
     return doll;
@@ -253,8 +263,9 @@ GB.ragdoll = (function () {
 
   function applyImpulse(doll, dir, impact, part) {
     const Mt = M();
-    const knock = part === 'head' ? 9 : part === 'torso' ? 7.5 : 6.5;
-    const up = part === 'head' ? 3.8 : 2.4;
+    const massK = doll.heavy ? 0.46 : 1;
+    const knock = (part === 'head' ? 9 : part === 'torso' ? 7.5 : 6.5) * massK;
+    const up = (part === 'head' ? 3.8 : 2.4) * massK;
     let closest = null, best = Infinity;
     for (const k in doll.bodies) {
       const b = doll.bodies[k];
@@ -353,9 +364,10 @@ GB.ragdoll = (function () {
     if (!Mt || !info) return false;
     const body = info.body, doll = info.doll;
     Mt.Sleeping.set(body, false);
+    const kick = (doll.cfg && doll.cfg.robot) ? 0.48 : 1;
     Mt.Body.setVelocity(body, {
-      x: body.velocity.x + dir.x * 10,
-      y: body.velocity.y + dir.y * 10 - 4
+      x: body.velocity.x + dir.x * 10 * kick,
+      y: body.velocity.y + dir.y * 10 * kick - 4 * kick
     });
     Mt.Body.setAngularVelocity(body, body.angularVelocity + (Math.random() - 0.5) * 0.35);
     if (!buckets) return false;
@@ -403,6 +415,10 @@ GB.ragdoll = (function () {
   ];
 
   function drawPart(ctx, kind, cfg, doll) {
+    if (cfg && cfg.robot && GB.chars && GB.chars.drawEndoRagdollPart) {
+      GB.chars.drawEndoRagdollPart(ctx, kind, cfg, doll);
+      return;
+    }
     const boot = shade(cfg.pants, 0.5);
     if (kind === 'head') {
       ctx.fillStyle = cfg.bandana;
